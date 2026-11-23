@@ -1171,6 +1171,99 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "depositUsdc",
+      "docs": [
+        "Move USDC from the user's rollup token account into the program treasury and credit the ledger."
+      ],
+      "discriminator": [
+        184,
+        148,
+        250,
+        169,
+        224,
+        213,
+        34,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Must be the Player owner: a session key can spend its cap on cards but never move funds."
+          ],
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "userUsdc",
+          "docs": [
+            "The user's eSPL balance (canonical ATA on the rollup)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "treasuryUsdc",
+          "docs": [
+            "Program-held USDC (owned by the Config PDA)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "freezeSeries",
       "discriminator": [
         18,
@@ -2601,6 +2694,96 @@ export type Scratchers = {
               32
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "withdrawUsdc",
+      "discriminator": [
+        114,
+        49,
+        72,
+        184,
+        27,
+        156,
+        243,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Must be the Player owner: a session key can spend its cap on cards but never move funds."
+          ],
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "userUsdc",
+          "docs": [
+            "The user's eSPL balance (canonical ATA on the rollup)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "treasuryUsdc",
+          "docs": [
+            "Program-held USDC (owned by the Config PDA)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     }

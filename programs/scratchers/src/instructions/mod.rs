@@ -1,12 +1,14 @@
 pub mod admin;
 pub mod cards;
 pub mod delegation;
+pub mod funds;
 pub mod player;
 pub mod price;
 pub mod settlement;
 pub use admin::*;
 pub use cards::*;
 pub use delegation::*;
+pub use funds::*;
 pub use player::*;
 pub use price::*;
 pub use settlement::*;

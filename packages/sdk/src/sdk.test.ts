@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -78,4 +78,14 @@ test("pay_out / mark_settled use the per-card Payout PDA", async () => {
   assert.ok(pay.keys.some((k) => k.pubkey.equals(expected)));
   const mark = await markSettledIx(program, authority, 7n);
   assert.ok(mark.keys.some((k) => k.pubkey.equals(expected)));
+});
+
+test("deposit/withdraw name the owner's ATA and the Config-owned treasury", async () => {
+  const [authority, usdc] = [1, 2].map(() => Keypair.generate().publicKey);
+  const dep = await depositUsdcIx(program, authority, usdc, 5_000_000n);
+  const keys = dep.keys.map((k) => k.pubkey.toBase58());
+  assert.ok(keys.includes(treasuryUsdc(usdc).toBase58()));
+  assert.ok(keys.includes(playerPda(authority).toBase58()));
+  const wd = await withdrawUsdcIx(program, authority, usdc, 1n);
+  assert.equal(wd.keys.length, dep.keys.length);
 });

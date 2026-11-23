@@ -64,6 +64,13 @@ pub mod scratchers {
     pub fn undelegate_feed(ctx: Context<UndelegateFeed>) -> Result<()> {
         instructions::undelegate_feed(ctx)
     }
+    /// Move USDC from the user's rollup token account into the program treasury and credit the ledger.
+    pub fn deposit_usdc(ctx: Context<Funds>, amount: u64) -> Result<()> {
+        instructions::deposit_usdc(ctx, amount)
+    }
+    pub fn withdraw_usdc(ctx: Context<Funds>, amount: u64) -> Result<()> {
+        instructions::withdraw_usdc(ctx, amount)
+    }
     pub fn sync_inventory(ctx: Context<SyncInventory>, added_shares: u64) -> Result<()> {
         instructions::sync_inventory(ctx, added_shares)
     }

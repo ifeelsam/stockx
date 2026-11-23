@@ -65,6 +65,7 @@ struct Env {
     session: Keypair,
     pusher: Keypair,
     mint: Pubkey,
+    usdc: Pubkey,
     validator: Pubkey,
     player: Pubkey,
     vault: Pubkey,
@@ -144,6 +145,8 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
     let validator = pk(&svm.validator_identity());
     let mint = Pubkey::new_unique();
     svm.set_account(addr(mint), stock_mint_account(&admin.pubkey().to_bytes().into())).unwrap();
+    let usdc = Pubkey::new_unique(); // same 6-decimal mint layout as the stock mints
+    svm.set_account(addr(usdc), stock_mint_account(&admin.pubkey().to_bytes().into())).unwrap();
 
     let (config, series, vault, feed, player) = (
         pda(&[b"config"]),
@@ -156,7 +159,7 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
     let u = pk(&user.pubkey());
     let sys = system_program::ID;
 
-    send(&mut svm, Base, &[&admin], ix(ix_data::InitConfig { keeper: a, usdc_mint: Pubkey::new_unique() },
+    send(&mut svm, Base, &[&admin], ix(ix_data::InitConfig { keeper: a, usdc_mint: usdc },
         scratchers::accounts::InitConfig { config, admin: a, system_program: sys }), "init_config");
     send(&mut svm, Base, &[&admin], ix(
         ix_data::CreateSeries { args: scratchers::instructions::CreateSeriesArgs {
@@ -199,7 +202,7 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
             delegation_metadata_feed: delegation_metadata_pda_from_delegated_account(&feed),
             feed, owner_program: owner, delegation_program: DelegationProgram::id(), system_program: sys }), "delegate_feed");
 
-    let mut env = Env { svm, admin, user, session, pusher, mint, validator, player, vault, series, feed, config };
+    let mut env = Env { svm, admin, user, session, pusher, mint, usdc, validator, player, vault, series, feed, config };
     push_price(&mut env, PRICE, NOW);
     edit_er_player(&mut env.svm, &player, |p| p.usdc_balance_e6 = usdc_e6);
     let sync = ix(ix_data::SyncInventory { added_shares: inventory_shares },
@@ -706,4 +709,71 @@ fn session_key_rules_expiry_cap_and_strangers() {
     assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
     let own = buy_ix(&e, &user, 1, u64::MAX);
     send(&mut e.svm, Ephemeral, &[&user], own, "authority buys directly");
+}
+
+// ---- USDC in and out -----------------------------------------------------------------------------
+
+/// Stand-ins for the rollup-side token accounts: the user's eSPL balance and the Config-owned treasury.
+fn put_er_token(e: &mut Env, owner: &Pubkey, amount: u64) -> Pubkey {
+    let a = ata(owner, &e.usdc);
+    e.svm.set_account(addr(a), token_account(&e.usdc, owner, amount)).unwrap();
+    e.svm.delegate_account(addr(a)).unwrap(); // owner on base becomes the delegation program; writable on the rollup
+    a
+}
+fn er_token_amount(e: &Env, a: &Pubkey) -> u64 {
+    u64::from_le_bytes(e.svm.get_account_for(Ephemeral, &addr(*a)).unwrap().data[64..72].try_into().unwrap())
+}
+fn funds_ix(e: &Env, signer: &Keypair, user_usdc: Pubkey, treasury: Pubkey, deposit: bool, amount: u64) -> Instruction {
+    let accounts = scratchers::accounts::Funds {
+        authority: pk(&signer.pubkey()), player: e.player, config: e.config, usdc_mint: e.usdc, user_usdc,
+        treasury_usdc: treasury, token_program: anchor_spl::token::ID };
+    if deposit { ix(ix_data::DepositUsdc { amount }, accounts) } else { ix(ix_data::WithdrawUsdc { amount }, accounts) }
+}
+
+#[test]
+fn usdc_deposit_funds_the_ledger_and_withdraw_returns_it() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    let user_usdc = put_er_token(&mut e, &pk(&user.pubkey()), 50_000_000);
+    let cfg = e.config;
+    let treasury = put_er_token(&mut e, &cfg, 0);
+
+    let dep = funds_ix(&e, &user, user_usdc, treasury, true, 30_000_000);
+    send(&mut e.svm, Ephemeral, &[&user], dep, "deposit_usdc");
+    assert_eq!(read_player(&e.svm, Ephemeral, &e.player).usdc_balance_e6, 30_000_000);
+    assert_eq!((er_token_amount(&e, &user_usdc), er_token_amount(&e, &treasury)), (20_000_000, 30_000_000));
+
+    // The deposited balance is spendable on cards.
+    let buy = buy_ix(&e, &user, 2, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy with deposited funds");
+    assert_eq!(read_player(&e.svm, Ephemeral, &e.player).usdc_balance_e6, 28_000_000);
+
+    // Withdraw what is left; over-withdrawing is refused.
+    let too_much = funds_ix(&e, &user, user_usdc, treasury, false, 28_000_001);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], too_much).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::InsufficientBalance)), "{err}");
+    let wd = funds_ix(&e, &user, user_usdc, treasury, false, 28_000_000);
+    send(&mut e.svm, Ephemeral, &[&user], wd, "withdraw_usdc");
+    assert_eq!(read_player(&e.svm, Ephemeral, &e.player).usdc_balance_e6, 0);
+    assert_eq!((er_token_amount(&e, &user_usdc), er_token_amount(&e, &treasury)), (48_000_000, 2_000_000));
+}
+
+#[test]
+fn session_key_cannot_move_funds_in_or_out() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    create_session(&mut e, NOW + 3600, 20_000_000);
+    let session = e.session.insecure_clone();
+    let owner = pk(&e.user.pubkey());
+    let user_usdc = put_er_token(&mut e, &owner, 50_000_000);
+    let cfg = e.config;
+    let treasury = put_er_token(&mut e, &cfg, 10_000_000);
+    // Signing as the session key: the player PDA seeds are derived from the signer, so it cannot name another player.
+    for deposit in [true, false] {
+        let mut i = funds_ix(&e, &session, user_usdc, treasury, deposit, 1_000_000);
+        i.accounts.iter_mut().find(|m| m.pubkey == addr(e.player)).unwrap(); // the victim's Player is named
+        let err = try_send(&mut e.svm, Ephemeral, &[&session], i).unwrap_err();
+        assert!(err.contains("Custom(") || err.contains("Seeds"), "must be rejected: {err}");
+    }
+    assert_eq!(er_token_amount(&e, &treasury), 10_000_000);
+    assert_eq!(er_token_amount(&e, &user_usdc), 50_000_000);
 }

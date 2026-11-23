@@ -186,3 +186,24 @@ export const payOutIx = (p: ScratchersProgram, keeper: PublicKey, authority: Pub
       payout: payoutPda(playerPda(authority), cardId),
     })
     .instruction();
+
+// ---- USDC in and out (rollup) --------------------------------------------------------------
+
+/** The program-held USDC token account on the rollup: ATA of the Config PDA. Create it as a Magic ATA. */
+export const treasuryUsdc = (usdcMint: PublicKey) => getAssociatedTokenAddressSync(usdcMint, configPda(), true);
+
+const fundsAccounts = (authority: PublicKey, usdcMint: PublicKey) => ({
+  authority,
+  player: playerPda(authority),
+  usdcMint,
+  userUsdc: getAssociatedTokenAddressSync(usdcMint, authority),
+  treasuryUsdc: treasuryUsdc(usdcMint),
+});
+
+/** After `delegateSpl` put USDC on the rollup: move it into the treasury and credit the in-app balance. */
+export const depositUsdcIx = (p: ScratchersProgram, authority: PublicKey, usdcMint: PublicKey, amountE6: bigint) =>
+  p.methods.depositUsdc(new BN(amountE6.toString())).accountsPartial(fundsAccounts(authority, usdcMint)).instruction();
+
+/** Owner only (a session key cannot withdraw). Returns USDC to the owner's rollup token account. */
+export const withdrawUsdcIx = (p: ScratchersProgram, authority: PublicKey, usdcMint: PublicKey, amountE6: bigint) =>
+  p.methods.withdrawUsdc(new BN(amountE6.toString())).accountsPartial(fundsAccounts(authority, usdcMint)).instruction();
