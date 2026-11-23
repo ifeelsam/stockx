@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { CardState } from "@scratchers/sdk";
+import { Cooldown } from "./ratelimit.js";
+import { isUsMarketOpen, planWalk, toFeedUnits } from "./prices.js";
+import { planRepairs, type CardLite } from "./repair.js";
+
+test("toFeedUnits rescales to the feed exponent and floors", () => {
+  assert.deepEqual(toFeedUnits("25012345678", "12345", -8), { price: 25012345678n, conf: 12345n });
+  assert.deepEqual(toFeedUnits("25012", "5", -2), { price: 25012000000n, conf: 5000000n }); // $250.12 at expo -2
+  assert.deepEqual(toFeedUnits("250123456789", "99", -9), { price: 25012345678n, conf: 9n }); // expo -9 floors
+});
+
+test("US market hours in New York time", () => {
+  assert.equal(isUsMarketOpen(new Date("2026-11-23T14:30:00Z")), true); // Mon 09:30 EST
+  assert.equal(isUsMarketOpen(new Date("2026-11-23T14:29:00Z")), false);
+  assert.equal(isUsMarketOpen(new Date("2026-11-23T21:00:00Z")), false); // 16:00 EST closed
+  assert.equal(isUsMarketOpen(new Date("2026-11-22T17:00:00Z")), false); // Sunday
+  assert.equal(isUsMarketOpen(new Date("2026-07-15T13:30:00Z")), true); // Wed 09:30 EDT
+});
+
+test("cooldown allows once per window per key", () => {
+  const c = new Cooldown(1000);
+  assert.equal(c.take("a", 0), 0);
+  assert.equal(c.take("a", 400), 600);
+  assert.equal(c.take("b", 400), 0);
+  assert.equal(c.take("a", 1000), 0);
+});
+
+test("repair planner waits out the grace period, repairs, then settles", () => {
+  const seen = new Map<bigint, number>();
+  const card = (over: Partial<CardLite>): CardLite => ({ id: 1n, state: CardState.ClaimRequested, seriesId: 1, paidOut: false, ...over });
+  assert.deepEqual(planRepairs([card({})], seen, 0, 20_000), []); // first sighting
+  assert.deepEqual(planRepairs([card({})], seen, 19_999, 20_000), []);
+  assert.deepEqual(planRepairs([card({})], seen, 20_000, 20_000), [{ kind: "pay_out", cardId: 1n, seriesId: 1 }]);
+  assert.deepEqual(planRepairs([card({ paidOut: true })], seen, 21_000, 20_000), [{ kind: "mark_settled", cardId: 1n }]);
+  assert.deepEqual(planRepairs([card({ state: CardState.Settled })], seen, 22_000, 20_000), []);
+  assert.equal(seen.has(1n), false);
+});
+
+test("planWalk stays inside the band and lands exactly on the target", () => {
+  const band = 500; // 5%
+  assert.deepEqual(planWalk(100n, 104n, band), [104n]); // within band: one step
+  const up = planWalk(20_000_000_000n, 26_000_000_000n, band); // +30% gap
+  assert.ok(up.length >= 5 && up.at(-1) === 26_000_000_000n);
+  let prev = 20_000_000_000n;
+  for (const p of up) {
+    const diff = p > prev ? p - prev : prev - p;
+    assert.ok(diff * 10_000n <= prev * BigInt(band), `step ${prev}->${p} exceeds the band`);
+    prev = p;
+  }
+  const down = planWalk(26_000_000_000n, 20_000_000_000n, band);
+  assert.equal(down.at(-1), 20_000_000_000n);
+  assert.deepEqual(planWalk(0n, 5n, band), [5n]); // first push has no band
+});
