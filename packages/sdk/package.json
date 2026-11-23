@@ -1,0 +1,33 @@
+{
+  "name": "@scratchers/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "gen": "bash ../../scripts/gen-sdk.sh"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.18.0",
+    "@solana/web3.js": "^1.98.0",
+    "bn.js": "^5.2.5"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,135 @@
+import BN from "bn.js";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
+import { configPda, feedPda, playerPda, seriesPda, vaultPda } from "./pda.js";
+import type { ScratchersProgram } from "./program.js";
+import type { Tier } from "./tiers.js";
+import { totalWeight } from "./tiers.js";
+
+/**
+ * Instruction builders. Which connection each one goes to:
+ *  base:   initConfig createSeries freezeSeries initVault initFeed signup delegate*
+ *  rollup: createSession revokeSession pushPrice buyCard cancelPending undelegate*
+ */
+
+// ---- admin (base) -------------------------------------------------------------------------
+export const initConfigIx = (p: ScratchersProgram, admin: PublicKey, keeper: PublicKey, usdcMint: PublicKey) =>
+  p.methods.initConfig(keeper, usdcMint).accountsPartial({ admin }).instruction();
+
+export type CreateSeriesParams = {
+  id: number;
+  stockMint: PublicKey;
+  source: "selfPushed" | "magicBlockOracle";
+  feed: PublicKey;
+  feedExpo: number;
+  ticketUsdE6: bigint;
+  tiers: Tier[];
+  demo?: boolean;
+  maxStalenessS?: number;
+  maxMoveBps?: number;
+  maxConfBps?: number;
+  vrfTimeoutS?: number;
+};
+
+export function createSeriesIx(p: ScratchersProgram, admin: PublicKey, a: CreateSeriesParams): Promise<TransactionInstruction> {
+  if (a.tiers.length !== 8) throw new Error("a series has exactly 8 tier slots (pad with {multiplier:0, weight:0})");
+  return p.methods
+    .createSeries({
+      id: a.id,
+      priceSource: a.source === "selfPushed" ? { selfPushed: {} } : { magicBlockOracle: {} },
+      feed: a.feed,
+      feedExpo: a.feedExpo,
+      ticketUsdE6: new BN(a.ticketUsdE6.toString()),
+      tiers: a.tiers,
+      totalWeight: totalWeight(a.tiers),
+      demo: a.demo ?? false,
+      maxStalenessS: new BN(a.maxStalenessS ?? 30),
+      maxMoveBps: a.maxMoveBps ?? 500,
+      maxConfBps: a.maxConfBps ?? 100,
+      vrfTimeoutS: new BN(a.vrfTimeoutS ?? 120),
+    })
+    .accountsPartial({ admin, stockMint: a.stockMint, series: seriesPda(a.id) })
+    .instruction();
+}
+
+export const freezeSeriesIx = (p: ScratchersProgram, admin: PublicKey, seriesId: number) =>
+  p.methods.freezeSeries().accountsPartial({ admin, series: seriesPda(seriesId) }).instruction();
+
+export const initVaultIx = (p: ScratchersProgram, admin: PublicKey, stockMint: PublicKey) =>
+  p.methods.initVault().accountsPartial({ admin, stockMint }).instruction();
+
+export const initFeedIx = (p: ScratchersProgram, admin: PublicKey, feedId: Uint8Array, pusher: PublicKey, expo: number, maxMoveBps = 500) =>
+  p.methods.initFeed(Array.from(feedId), pusher, expo, maxMoveBps).accountsPartial({ admin }).instruction();
+
+export const delegateVaultIx = (p: ScratchersProgram, admin: PublicKey, stockMint: PublicKey, validator: PublicKey) =>
+  p.methods.delegateVault(validator).accountsPartial({ admin, stockMint, vaultState: vaultPda(stockMint) }).instruction();
+
+export const delegateFeedIx = (p: ScratchersProgram, admin: PublicKey, feedId: Uint8Array, validator: PublicKey) =>
+  p.methods.delegateFeed(Array.from(feedId), validator).accountsPartial({ admin, feed: feedPda(feedId) }).instruction();
+
+// ---- player (base) ------------------------------------------------------------------------
+export const signupIx = (p: ScratchersProgram, authority: PublicKey) =>
+  p.methods.signup().accountsPartial({ authority }).instruction();
+
+export const delegatePlayerIx = (p: ScratchersProgram, authority: PublicKey, validator: PublicKey) =>
+  p.methods.delegatePlayer(validator).accountsPartial({ authority, player: playerPda(authority) }).instruction();
+
+// ---- rollup -------------------------------------------------------------------------------
+export const createSessionIx = (p: ScratchersProgram, authority: PublicKey, sessionKey: PublicKey, expiryUnix: number, capE6: bigint) =>
+  p.methods
+    .createSession(sessionKey, new BN(expiryUnix), new BN(capE6.toString()))
+    .accountsPartial({ authority, player: playerPda(authority) })
+    .instruction();
+
+export const revokeSessionIx = (p: ScratchersProgram, authority: PublicKey) =>
+  p.methods.revokeSession().accountsPartial({ authority, player: playerPda(authority) }).instruction();
+
+export const pushPriceIx = (p: ScratchersProgram, pusher: PublicKey, feedId: Uint8Array, price: bigint, conf: bigint, publishTs: number) =>
+  p.methods
+    .pushPrice(new BN(price.toString()), new BN(conf.toString()), new BN(publishTs))
+    .accountsPartial({ pusher, feed: feedPda(feedId) })
+    .instruction();
+
+export type BuyCardParams = {
+  /** The player's authority, or its session key. */
+  signer: PublicKey;
+  authority: PublicKey;
+  seriesId: number;
+  stockMint: PublicKey;
+  feed: PublicKey;
+  n: number;
+  /** 1e8 fixed point; the buy fails if the on-chain price is higher. */
+  maxPrice: bigint;
+  /** 32 bytes of client entropy mixed into the VRF request. */
+  callerSeed: Uint8Array;
+};
+
+export function buyCardIx(p: ScratchersProgram, a: BuyCardParams): Promise<TransactionInstruction> {
+  if (a.n < 1 || a.n > 10) throw new Error("n must be 1..=10");
+  if (a.callerSeed.length !== 32) throw new Error("callerSeed must be 32 bytes");
+  return p.methods
+    .buyCard(a.n, new BN(a.maxPrice.toString()), Array.from(a.callerSeed))
+    .accountsPartial({
+      signer: a.signer,
+      authority: a.authority,
+      player: playerPda(a.authority),
+      config: configPda(),
+      series: seriesPda(a.seriesId),
+      vaultState: vaultPda(a.stockMint),
+      priceFeed: a.feed,
+      oracleQueue: VRF_EPHEMERAL_QUEUE,
+    })
+    .instruction();
+}
+
+export const cancelPendingIx = (p: ScratchersProgram, signer: PublicKey, authority: PublicKey, seriesId: number, stockMint: PublicKey, cardId: bigint) =>
+  p.methods
+    .cancelPending(new BN(cardId.toString()))
+    .accountsPartial({ signer, authority, player: playerPda(authority), series: seriesPda(seriesId), vaultState: vaultPda(stockMint) })
+    .instruction();
+
+export const undelegatePlayerIx = (p: ScratchersProgram, authority: PublicKey) =>
+  p.methods
+    .undelegatePlayer()
+    .accountsPartial({ authority, player: playerPda(authority), magicProgram: MAGIC_PROGRAM_ID, magicContext: MAGIC_CONTEXT_ID })
+    .instruction();
