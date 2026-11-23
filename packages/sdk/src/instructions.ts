@@ -133,3 +133,7 @@ export const undelegatePlayerIx = (p: ScratchersProgram, authority: PublicKey) =
     .undelegatePlayer()
     .accountsPartial({ authority, player: playerPda(authority), magicProgram: MAGIC_PROGRAM_ID, magicContext: MAGIC_CONTEXT_ID })
     .instruction();
+
+/** Rollup. Credit the inventory mirror after transferring stock into the vault token account on Solana. */
+export const syncInventoryIx = (p: ScratchersProgram, authority: PublicKey, stockMint: PublicKey, addedShares: bigint) =>
+  p.methods.syncInventory(new BN(addedShares.toString())).accountsPartial({ authority, vaultState: vaultPda(stockMint) }).instruction();

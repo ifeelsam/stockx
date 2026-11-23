@@ -1667,6 +1667,72 @@ export type Scratchers = {
       "args": []
     },
     {
+      "name": "syncInventory",
+      "discriminator": [
+        17,
+        58,
+        27,
+        193,
+        139,
+        86,
+        147,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vaultState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vaultState.stockMint",
+                "account": "vaultState"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "addedShares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "undelegateFeed",
       "discriminator": [
         242,

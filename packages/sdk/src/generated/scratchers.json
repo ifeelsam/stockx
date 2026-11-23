@@ -1661,6 +1661,72 @@
       "args": []
     },
     {
+      "name": "sync_inventory",
+      "discriminator": [
+        17,
+        58,
+        27,
+        193,
+        139,
+        86,
+        147,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault_state.stock_mint",
+                "account": "VaultState"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "added_shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "undelegate_feed",
       "discriminator": [
         242,

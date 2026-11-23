@@ -122,16 +122,6 @@ fn edit_er_player(svm: &mut MagicSVM, a: &Pubkey, f: impl FnOnce(&mut Player)) {
     acc.data[8..8 + n].copy_from_slice(bytemuck::bytes_of(&p));
     svm.ephemeral_mut().set_account(addr(*a), acc).unwrap();
 }
-fn edit_er_vault(svm: &mut MagicSVM, a: &Pubkey, f: impl FnOnce(&mut VaultState)) {
-    let mut acc = svm.ephemeral().get_account(&addr(*a)).expect("vault");
-    let mut v = VaultState::try_deserialize(&mut &acc.data[..]).unwrap();
-    f(&mut v);
-    let mut out = Vec::new();
-    v.try_serialize(&mut out).unwrap();
-    acc.data[..out.len()].copy_from_slice(&out);
-    svm.ephemeral_mut().set_account(addr(*a), acc).unwrap();
-}
-
 fn set_time(svm: &mut MagicSVM, ts: i64) {
     let mut c: Clock = svm.get_sysvar();
     c.unix_timestamp = ts;
@@ -209,7 +199,9 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
     let mut env = Env { svm, admin, user, session, pusher, mint, validator, player, vault, series, feed, config };
     push_price(&mut env, PRICE, NOW);
     edit_er_player(&mut env.svm, &player, |p| p.usdc_balance_e6 = usdc_e6);
-    edit_er_vault(&mut env.svm, &vault, |v| v.available_shares_mirror = inventory_shares);
+    let sync = ix(ix_data::SyncInventory { added_shares: inventory_shares },
+        scratchers::accounts::SyncInventory { config, authority: a, vault_state: vault });
+    send(&mut env.svm, Ephemeral, &[&env.admin.insecure_clone()], sync, "sync_inventory");
     env
 }
 
@@ -375,4 +367,23 @@ fn spoofed_callback_cannot_pick_the_outcome() {
 #[allow(dead_code)]
 fn _keep(e: &Env) -> (Pubkey, Pubkey, [u8; 8]) {
     (e.mint, e.validator, Config::DISCRIMINATOR.try_into().unwrap())
+}
+
+#[test]
+fn insufficient_inventory_blocks_buys_and_sync_is_gated() {
+    // 10 cards reserve 10 × 1000x × $1 / $200 = 50 shares; fund only 49.
+    let mut e = setup(50_000_000, 49_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    let buy = buy_ix(&e, &user, 10, u64::MAX);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::InsufficientInventory)), "{err}");
+    // 9 cards (45 shares) still fit.
+    let buy = buy_ix(&e, &user, 9, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy 9");
+
+    // Only admin/keeper may credit inventory.
+    let rogue = ix(ix_data::SyncInventory { added_shares: 1_000_000_000 },
+        scratchers::accounts::SyncInventory { config: e.config, authority: pk(&user.pubkey()), vault_state: e.vault });
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], rogue).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
 }

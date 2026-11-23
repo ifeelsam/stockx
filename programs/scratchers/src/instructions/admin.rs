@@ -118,3 +118,21 @@ pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
     };
     Ok(())
 }
+
+/// Rollup. After stock is transferred into the vault token account on Solana (plain SPL transfer),
+/// admin or keeper credits the same amount to the rollup's inventory mirror.
+#[derive(Accounts)]
+pub struct SyncInventory<'info> {
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(constraint = authority.key() == config.admin || authority.key() == config.keeper @ ScratchError::Unauthorized)]
+    pub authority: Signer<'info>,
+    #[account(mut, seeds = [b"vault", vault_state.stock_mint.as_ref()], bump = vault_state.bump)]
+    pub vault_state: Account<'info, VaultState>,
+}
+
+pub fn sync_inventory(ctx: Context<SyncInventory>, added_shares: u64) -> Result<()> {
+    let v = &mut ctx.accounts.vault_state;
+    v.available_shares_mirror = v.available_shares_mirror.checked_add(added_shares).ok_or(ScratchError::InsufficientInventory)?;
+    Ok(())
+}

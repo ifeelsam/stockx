@@ -55,6 +55,9 @@ pub mod scratchers {
     pub fn undelegate_feed(ctx: Context<UndelegateFeed>) -> Result<()> {
         instructions::undelegate_feed(ctx)
     }
+    pub fn sync_inventory(ctx: Context<SyncInventory>, added_shares: u64) -> Result<()> {
+        instructions::sync_inventory(ctx, added_shares)
+    }
     pub fn create_session(ctx: Context<Session>, session_key: Pubkey, expiry: i64, cap_e6: u64) -> Result<()> {
         instructions::create_session(ctx, session_key, expiry, cap_e6)
     }
