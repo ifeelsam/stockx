@@ -3,12 +3,15 @@ use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 use ephemeral_rollups_sdk::anchor::{vrf, vrf_callback};
 use ephemeral_rollups_sdk::vrf::{
-    consts::{program_identity_pubkey, DEFAULT_EPHEMERAL_QUEUE, DEFAULT_EPHEMERAL_TEST_QUEUE},
+    consts::{program_identity_pubkey, scoped_vrf_identity_const, DEFAULT_EPHEMERAL_QUEUE, DEFAULT_EPHEMERAL_TEST_QUEUE},
     instructions::{create_request_randomness_ix_const, RequestRandomnessParams},
     types::SerializableAccountMeta,
 };
 
 const PROGRAM_IDENTITY: Pubkey = program_identity_pubkey(&crate::ID);
+// Scoped VRF identity as a compile-time constant. The `#[vrf_callback]` macro's own check derives
+// this PDA at runtime (curve check) and burns the whole 197k CU callback budget.
+const VRF_IDENTITY: Pubkey = Pubkey::new_from_array(scoped_vrf_identity_const(&crate::ID).0);
 pub const MAX_BUY: usize = 10;
 
 fn is_oracle_queue(k: &Pubkey) -> bool {
@@ -121,10 +124,13 @@ pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 
     Ok(())
 }
 
-/// `#[vrf_callback]` injects the scoped VRF identity signer; only this program's requests reach here.
+/// Only callbacks signed by this program's scoped VRF identity reach here.
 #[vrf_callback]
 #[derive(Accounts)]
 pub struct VrfCallback<'info> {
+    /// Signer proves the callback was issued by the VRF program for this program.
+    #[account(address = VRF_IDENTITY)]
+    pub vrf_program_identity: Signer<'info>,
     #[account(mut)]
     pub player: AccountLoader<'info, Player>,
     pub series: Account<'info, Series>,
