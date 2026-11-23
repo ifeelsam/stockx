@@ -22,4 +22,5 @@ pub enum ScratchError {
     Unauthorized,
     SeriesFrozen,
     BadPrizeTable,
+    BadMint,
 }

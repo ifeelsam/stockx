@@ -13,6 +13,8 @@ default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
+# accept the localnet ephemeral VRF test queue (MagicSVM tests)
+localnet = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 anchor-debug = []
@@ -22,6 +24,7 @@ custom-panic = []
 [dependencies]
 anchor-lang = { version = "=1.2.2", features = ["init-if-needed"] }
 anchor-spl = "=1.2.2"
+solana-sha256-hasher = "3.1.0"
 bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
 # Pinned: 0.20 breaks #[vrf]. `anchor` feature = Anchor 1.x.
 ephemeral-rollups-sdk = { version = "=0.18.0", features = ["anchor", "vrf"] }

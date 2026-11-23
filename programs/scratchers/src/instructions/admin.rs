@@ -52,6 +52,7 @@ pub struct CreateSeries<'info> {
 
 pub fn create_series(ctx: Context<CreateSeries>, a: CreateSeriesArgs) -> Result<()> {
     Series::validate_table(&a.tiers, a.total_weight)?;
+    require!(ctx.accounts.stock_mint.decimals == STOCK_DECIMALS, ScratchError::BadMint);
     *ctx.accounts.series = Series {
         id: a.id,
         stock_mint: ctx.accounts.stock_mint.key(),

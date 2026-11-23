@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
+use ephemeral_rollups_sdk::anchor::ephemeral;
 
 pub mod error;
+pub mod events;
 pub mod instructions;
 pub mod price;
 pub mod state;
@@ -9,10 +11,12 @@ use instructions::*;
 
 declare_id!("EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn");
 
+#[ephemeral]
 #[program]
 pub mod scratchers {
     use super::*;
 
+    // ---- Solana (base layer) ----
     pub fn init_config(ctx: Context<InitConfig>, keeper: Pubkey, usdc_mint: Pubkey) -> Result<()> {
         instructions::init_config(ctx, keeper, usdc_mint)
     }
@@ -24,6 +28,50 @@ pub mod scratchers {
     }
     pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
         instructions::init_vault(ctx)
+    }
+    pub fn init_feed(ctx: Context<InitFeed>, feed_id: [u8; 32], pusher: Pubkey, expo: i32, max_move_bps: u16) -> Result<()> {
+        instructions::init_feed(ctx, feed_id, pusher, expo, max_move_bps)
+    }
+    pub fn signup(ctx: Context<Signup>) -> Result<()> {
+        instructions::signup(ctx)
+    }
+    pub fn delegate_player(ctx: Context<DelegatePlayer>, validator: Option<Pubkey>) -> Result<()> {
+        instructions::delegate_player(ctx, validator)
+    }
+    pub fn delegate_vault(ctx: Context<DelegateVault>, validator: Option<Pubkey>) -> Result<()> {
+        instructions::delegate_vault(ctx, validator)
+    }
+    pub fn delegate_feed(ctx: Context<DelegateFeed>, feed_id: [u8; 32], validator: Option<Pubkey>) -> Result<()> {
+        instructions::delegate_feed(ctx, feed_id, validator)
+    }
+
+    // ---- Ephemeral rollup ----
+    pub fn undelegate_player(ctx: Context<UndelegatePlayer>) -> Result<()> {
+        instructions::undelegate_player(ctx)
+    }
+    pub fn undelegate_vault(ctx: Context<UndelegateVault>) -> Result<()> {
+        instructions::undelegate_vault(ctx)
+    }
+    pub fn undelegate_feed(ctx: Context<UndelegateFeed>) -> Result<()> {
+        instructions::undelegate_feed(ctx)
+    }
+    pub fn create_session(ctx: Context<Session>, session_key: Pubkey, expiry: i64, cap_e6: u64) -> Result<()> {
+        instructions::create_session(ctx, session_key, expiry, cap_e6)
+    }
+    pub fn revoke_session(ctx: Context<Session>) -> Result<()> {
+        instructions::revoke_session(ctx)
+    }
+    pub fn push_price(ctx: Context<PushPrice>, price: i64, conf: u64, publish_ts: i64) -> Result<()> {
+        instructions::push_price(ctx, price, conf, publish_ts)
+    }
+    pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 32]) -> Result<()> {
+        instructions::buy_card(ctx, n, max_price, caller_seed)
+    }
+    pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u64, request_id: [u8; 32]) -> Result<()> {
+        instructions::vrf_callback(ctx, randomness, card_id, request_id)
+    }
+    pub fn cancel_pending(ctx: Context<CancelPending>, card_id: u64) -> Result<()> {
+        instructions::cancel_pending(ctx, card_id)
     }
 }
 

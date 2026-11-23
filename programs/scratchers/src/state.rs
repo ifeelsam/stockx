@@ -82,6 +82,33 @@ pub struct VaultState {
     pub bump: u8,
 }
 
+/// Stock mints use 6 decimals, so shares are in 1e-6 units.
+pub const STOCK_DECIMALS: u8 = 6;
+
+/// Path B price feed: pushed by `pusher` on the rollup (gasless).
+#[account]
+#[derive(InitSpace)]
+pub struct PriceFeed {
+    pub feed_id: [u8; 32],
+    pub price: i64,
+    pub conf: u64,
+    pub expo: i32,
+    pub publish_ts: i64,
+    pub pusher: Pubkey,
+    pub max_move_bps: u16,
+    pub bump: u8,
+}
+
+/// shares (1e-6 units) = multiplier × ticket_usd ÷ price. `price_e8`: USD per whole share, 1e8 fixed point.
+/// Floors (house-favouring).
+pub fn shares_for(multiplier: u16, ticket_usd_e6: u64, price_e8: u64) -> Option<u64> {
+    if price_e8 == 0 {
+        return None;
+    }
+    let n = multiplier as u128 * ticket_usd_e6 as u128 * 100_000_000u128; // 1e6 decimals · 1e8 price scale / 1e6 ticket scale
+    u64::try_from(n / price_e8 as u128).ok()
+}
+
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CardState {
@@ -111,6 +138,14 @@ pub struct Card {
     pub _pad: [u8; 4],
 }
 
+impl Card {
+    pub fn is_free(&self) -> bool {
+        self.state == CardState::Empty as u8
+            || self.state == CardState::Settled as u8
+            || self.state == CardState::Cancelled as u8
+    }
+}
+
 /// Zero-copy: 3.5 KB would blow the 4 KB BPF stack as a borsh account.
 #[account(zero_copy)]
 pub struct Player {
@@ -125,9 +160,73 @@ pub struct Player {
     pub _pad: [u8; 7],
 }
 
+impl Player {
+    /// Authority signs directly; otherwise a live session key may spend up to its remaining cap.
+    /// Session validity and the spend cap are enforced here (eSPL `approve` is not relied on).
+    pub fn authorize(&mut self, signer: &Pubkey, cost: u64, now: i64) -> Result<()> {
+        if *signer == self.authority {
+            return Ok(());
+        }
+        require!(*signer == self.session_key && self.session_key != Pubkey::default(), ScratchError::Unauthorized);
+        require!(now < self.session_expiry, ScratchError::SessionExpired);
+        require!(self.session_spend_remaining_e6 >= cost, ScratchError::SessionCapExceeded);
+        self.session_spend_remaining_e6 -= cost;
+        Ok(())
+    }
+
+    /// Cards whose result is still owed by VRF or the base-layer payout; unsafe to undelegate over.
+    pub fn has_inflight(&self) -> bool {
+        self.cards.iter().any(|c| {
+            c.state == CardState::Paid as u8
+                || c.state == CardState::RandomnessPending as u8
+                || c.state == CardState::ClaimRequested as u8
+        })
+    }
+}
+
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+    use bytemuck::Zeroable;
+
+    #[test]
+    fn shares_math() {
+        // $1 ticket, $200/share, 1x = 0.005 share = 5000 base units
+        assert_eq!(shares_for(1, 1_000_000, 200 * 100_000_000), Some(5_000));
+        assert_eq!(shares_for(1000, 1_000_000, 200 * 100_000_000), Some(5_000_000));
+        assert_eq!(shares_for(0, 1_000_000, 1), Some(0));
+        assert_eq!(shares_for(1, 1_000_000, 0), None);
+        // floors
+        assert_eq!(shares_for(1, 1_000_000, 300 * 100_000_000), Some(3_333));
+    }
+
+    fn player_with_session(expiry: i64, cap: u64) -> (Player, Pubkey, Pubkey) {
+        let mut p = Player::zeroed();
+        let (auth, sess) = (Pubkey::new_unique(), Pubkey::new_unique());
+        p.authority = auth;
+        p.session_key = sess;
+        p.session_expiry = expiry;
+        p.session_spend_remaining_e6 = cap;
+        (p, auth, sess)
+    }
+
+    #[test]
+    fn session_rules() {
+        let (mut p, auth, sess) = player_with_session(100, 5_000_000);
+        p.authorize(&auth, u64::MAX, 1_000).unwrap(); // authority ignores session
+        p.authorize(&sess, 2_000_000, 99).unwrap();
+        assert_eq!(p.session_spend_remaining_e6, 3_000_000);
+        assert!(p.authorize(&sess, 3_000_001, 99).is_err()); // cap exceeded
+        p.authorize(&sess, 3_000_000, 99).unwrap(); // exhaust exactly
+        assert!(p.authorize(&sess, 1, 99).is_err()); // cap exhausted
+        assert!(p.authorize(&Pubkey::new_unique(), 0, 99).is_err()); // stranger
+
+        let (mut expired, _, sess) = player_with_session(100, 5_000_000); // cap left but expired
+        assert!(expired.authorize(&sess, 1, 100).is_err());
+        let (mut nocap, _, sess) = player_with_session(100, 0); // valid but no cap
+        assert!(nocap.authorize(&sess, 1, 50).is_err());
+        nocap.authorize(&sess, 0, 50).unwrap();
+    }
 
     pub fn default_series() -> Series {
         let w = [(0, 61_858), (1, 25_000), (2, 10_000), (5, 2_000), (10, 1_000), (50, 100), (100, 40), (1000, 2)];
