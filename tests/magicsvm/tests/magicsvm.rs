@@ -601,3 +601,109 @@ fn pay_out_is_not_callable_by_strangers() {
     let err = try_send(&mut e.svm, Base, &[&attacker], direct).unwrap_err();
     assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
 }
+
+// ---- price and session rules through the real program ---------------------------------------------
+
+fn push_price_ix(e: &Env, pusher: &Keypair, price: i64, ts: i64) -> Instruction {
+    ix(ix_data::PushPrice { price, conf: 0, publish_ts: ts },
+        scratchers::accounts::PushPrice { pusher: pk(&pusher.pubkey()), feed: e.feed })
+}
+
+#[test]
+fn stale_price_pauses_sales_until_a_fresh_push() {
+    let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    set_time(&mut e.svm, NOW + 61); // max staleness is 60 s
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceStale)), "{err}");
+
+    push_price(&mut e, PRICE, NOW + 61);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy after fresh push");
+}
+
+#[test]
+fn buy_fails_when_price_exceeds_max_price() {
+    let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    let buy = buy_ix(&e, &user, 1, PRICE as u64 - 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceAboveMax)), "{err}");
+    let buy = buy_ix(&e, &user, 1, PRICE as u64); // exactly the price is fine
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy at max_price");
+}
+
+#[test]
+fn price_pushes_are_gated_banded_and_monotonic() {
+    let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
+    let pusher = e.pusher.insecure_clone();
+    // > 5% move (max_move_bps = 500) is rejected; ≤ 5% is accepted.
+    let jump = push_price_ix(&e, &pusher, PRICE * 106 / 100, NOW + 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&pusher], jump).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceOutOfBand)), "{err}");
+    let ok = push_price_ix(&e, &pusher, PRICE * 105 / 100, NOW + 1);
+    send(&mut e.svm, Ephemeral, &[&pusher], ok, "5% move");
+    // Non-increasing publish_ts is rejected.
+    let replay = push_price_ix(&e, &pusher, PRICE, NOW + 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&pusher], replay).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceStale)), "{err}");
+    // Only the registered pusher may sign.
+    let user = e.user.insecure_clone();
+    let rogue = push_price_ix(&e, &user, PRICE, NOW + 2);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], rogue).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+}
+
+#[test]
+fn a_different_feed_account_is_rejected() {
+    let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    let mut buy = buy_ix(&e, &user, 1, u64::MAX);
+    // Swap in the Player account as the "price feed": right program owner, wrong address.
+    let slot = buy.accounts.iter().position(|m| m.pubkey == addr(e.feed)).unwrap();
+    buy.accounts[slot].pubkey = addr(e.player);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::WrongFeed)), "{err}");
+}
+
+#[test]
+fn session_key_rules_expiry_cap_and_strangers() {
+    let mut e = setup(20_000_000, 10_000_000_000, default_tiers());
+    let session = e.session.insecure_clone();
+    let sbuy = |e: &Env, n| buy_ix(e, &e.session.insecure_clone(), n, u64::MAX);
+
+    // No session yet: the key is a stranger.
+    let b = sbuy(&e, 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&session], b).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+
+    // Valid session with a 2-card cap: two cards fit, the third exceeds the cap.
+    create_session(&mut e, NOW + 3600, 2_000_000);
+    let b = sbuy(&e, 2);
+    send(&mut e.svm, Ephemeral, &[&session], b, "buy within cap");
+    let b = sbuy(&e, 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&session], b).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::SessionCapExceeded)), "{err}");
+
+    // Valid session with no cap left stays blocked even though the balance is fine.
+    assert_eq!(read_player(&e.svm, Ephemeral, &e.player).session_spend_remaining_e6, 0);
+
+    // Expired session that still has a cap.
+    create_session(&mut e, NOW + 100, 10_000_000);
+    set_time(&mut e.svm, NOW + 100);
+    push_price(&mut e, PRICE, NOW + 100); // keep the price fresh so only the session fails
+    let b = sbuy(&e, 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&session], b).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::SessionExpired)), "{err}");
+
+    // Revoked session: the key is a stranger again; the authority still can buy.
+    let user = e.user.insecure_clone();
+    let revoke = ix(ix_data::RevokeSession {}, scratchers::accounts::Session { authority: pk(&user.pubkey()), player: e.player });
+    send(&mut e.svm, Ephemeral, &[&user], revoke, "revoke_session");
+    let b = sbuy(&e, 1);
+    let err = try_send(&mut e.svm, Ephemeral, &[&session], b).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+    let own = buy_ix(&e, &user, 1, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], own, "authority buys directly");
+}
