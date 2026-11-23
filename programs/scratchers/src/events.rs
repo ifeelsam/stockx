@@ -32,3 +32,18 @@ pub struct PriceUpdated {
     pub price: i64,
     pub publish_ts: i64,
 }
+
+#[event]
+pub struct ClaimRequested {
+    pub player: Pubkey,
+    pub series: u16,
+    pub cards: u8,
+    pub shares: u64,
+}
+
+#[event]
+pub struct PaidOut {
+    pub player: Pubkey,
+    pub card_id: u64,
+    pub shares: u64,
+}

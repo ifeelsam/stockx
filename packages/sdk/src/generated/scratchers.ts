@@ -282,6 +282,125 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "claimAll",
+      "discriminator": [
+        194,
+        194,
+        80,
+        194,
+        234,
+        210,
+        217,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "docs": [
+            "Authority or its session key."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "player",
+          "docs": [
+            "Payer of its own commit, escrow authority of its actions, and the committed account."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  114,
+                  105,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "seriesId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultState",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.stockMint",
+                "account": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "delegationRecordPlayer"
+        },
+        {
+          "name": "magicFeeVault",
+          "writable": true
+        },
+        {
+          "name": "magicProgram",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magicContext",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seriesId",
+          "type": "u16"
+        }
+      ]
+    },
+    {
       "name": "createSeries",
       "discriminator": [
         181,
@@ -1431,6 +1550,482 @@ export type Scratchers = {
       "args": []
     },
     {
+      "name": "markSettled",
+      "discriminator": [
+        85,
+        36,
+        192,
+        146,
+        83,
+        42,
+        49,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "authority"
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payout",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "cardId"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "cardId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "payOut",
+      "docs": [
+        "Keeper repair path (base layer)."
+      ],
+      "discriminator": [
+        122,
+        7,
+        14,
+        119,
+        71,
+        188,
+        166,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "keeper",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player"
+        },
+        {
+          "name": "series"
+        },
+        {
+          "name": "vaultState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.stockMint",
+                "account": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultState"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "dest",
+          "writable": true
+        },
+        {
+          "name": "stockMint"
+        },
+        {
+          "name": "payout",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "cardId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cardId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "payOutAction",
+      "docs": [
+        "Magic Action target (base layer); only reachable via the delegation program's escrow signature."
+      ],
+      "discriminator": [
+        177,
+        37,
+        30,
+        11,
+        7,
+        121,
+        30,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "player"
+        },
+        {
+          "name": "series"
+        },
+        {
+          "name": "vaultState",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.stockMint",
+                "account": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vaultState"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "dest",
+          "writable": true
+        },
+        {
+          "name": "stockMint"
+        },
+        {
+          "name": "payout",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  111,
+                  117,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              },
+              {
+                "kind": "arg",
+                "path": "cardId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "sourceProgram",
+          "address": "EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn"
+        },
+        {
+          "name": "escrowAuth"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "cardId",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "processUndelegation",
       "discriminator": [
         196,
@@ -2025,6 +2620,19 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "payout",
+      "discriminator": [
+        69,
+        45,
+        245,
+        131,
+        218,
+        101,
+        158,
+        228
+      ]
+    },
+    {
       "name": "player",
       "discriminator": [
         205,
@@ -2115,6 +2723,32 @@ export type Scratchers = {
         145,
         231,
         208
+      ]
+    },
+    {
+      "name": "claimRequested",
+      "discriminator": [
+        204,
+        141,
+        47,
+        39,
+        51,
+        65,
+        169,
+        32
+      ]
+    },
+    {
+      "name": "paidOut",
+      "discriminator": [
+        6,
+        137,
+        209,
+        225,
+        252,
+        53,
+        249,
+        252
       ]
     },
     {
@@ -2379,6 +3013,30 @@ export type Scratchers = {
       }
     },
     {
+      "name": "claimRequested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "series",
+            "type": "u16"
+          },
+          {
+            "name": "cards",
+            "type": "u8"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "config",
       "type": {
         "kind": "struct",
@@ -2470,6 +3128,45 @@ export type Scratchers = {
           },
           {
             "name": "vrfTimeoutS",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "paidOut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "cardId",
+            "type": "u64"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "payout",
+      "docs": [
+        "Exactly-once payout receipt; PDA [\"payout\", player, card_id]."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "ts",
             "type": "i64"
           }
         ]

@@ -45,6 +45,15 @@ pub mod scratchers {
         instructions::delegate_feed(ctx, feed_id, validator)
     }
 
+    /// Magic Action target (base layer); only reachable via the delegation program's escrow signature.
+    pub fn pay_out_action(ctx: Context<PayOutAction>, card_id: u64) -> Result<()> {
+        instructions::pay_out_action(ctx, card_id)
+    }
+    /// Keeper repair path (base layer).
+    pub fn pay_out(ctx: Context<PayOut>, card_id: u64) -> Result<()> {
+        instructions::pay_out(ctx, card_id)
+    }
+
     // ---- Ephemeral rollup ----
     pub fn undelegate_player(ctx: Context<UndelegatePlayer>) -> Result<()> {
         instructions::undelegate_player(ctx)
@@ -72,6 +81,12 @@ pub mod scratchers {
     }
     pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u64, request_id: [u8; 32]) -> Result<()> {
         instructions::vrf_callback(ctx, randomness, card_id, request_id)
+    }
+    pub fn claim_all(ctx: Context<ClaimAll>, series_id: u16) -> Result<()> {
+        instructions::claim_all(ctx, series_id)
+    }
+    pub fn mark_settled(ctx: Context<MarkSettled>, card_id: u64) -> Result<()> {
+        instructions::mark_settled(ctx, card_id)
     }
     pub fn cancel_pending(ctx: Context<CancelPending>, card_id: u64) -> Result<()> {
         instructions::cancel_pending(ctx, card_id)

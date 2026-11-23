@@ -16,3 +16,5 @@
 - **Price relay source**: `hermes.pyth.network` price endpoints now return **401 Unauthorized** (feed search still open). The keeper needs an authenticated Hermes-compatible endpoint or API key (e.g. a Pyth/RPC-provider key). Until then the keeper gets a pluggable source with a dev random-walk fallback
 - Deadline date
 - Privy app ID/secret, Telegram message to MagicBlock (see docs/TELEGRAM_DRAFT.md)
+
+- [x] Settlement (Day 3 core, ahead of schedule): claim_all → commit + Magic Action → pay_out + Payout receipt, keeper repair, mark_settled; 9 MagicSVM tests green

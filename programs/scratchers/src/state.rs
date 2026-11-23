@@ -82,6 +82,14 @@ pub struct VaultState {
     pub bump: u8,
 }
 
+/// Exactly-once payout receipt; PDA ["payout", player, card_id].
+#[account]
+#[derive(InitSpace)]
+pub struct Payout {
+    pub shares: u64,
+    pub ts: i64,
+}
+
 /// Stock mints use 6 decimals, so shares are in 1e-6 units.
 pub const STOCK_DECIMALS: u8 = 6;
 

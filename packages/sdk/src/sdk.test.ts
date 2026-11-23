@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -54,4 +54,28 @@ test("create_series requires 8 tier slots", async () => {
   await assert.rejects(async () => createSeriesIx(program, k, { id: 1, stockMint: k, source: "selfPushed", feed: k, feedExpo: -8, ticketUsdE6: 1_000_000n, tiers: DEFAULT_TIERS.slice(0, 3) }));
   const ix = await createSeriesIx(program, k, { id: 1, stockMint: k, source: "selfPushed", feed: PublicKey.default, feedExpo: -8, ticketUsdE6: 1_000_000n, tiers: DEFAULT_TIERS });
   assert.ok(ix.data.length > 8);
+});
+
+test("claim_all carries the fee vault, delegation record and magic accounts", async () => {
+  const [authority, validator, mint] = [1, 2, 3].map(() => Keypair.generate().publicKey);
+  const ix = await claimAllIx(program, authority, authority, 1, mint, validator);
+  const keys = ix.keys.map((k) => k.pubkey.toBase58());
+  assert.ok(keys.includes(magicFeeVaultPda(validator).toBase58()));
+  assert.ok(keys.includes(playerPda(authority).toBase58()));
+  assert.ok(ix.keys.find((k) => k.pubkey.equals(magicFeeVaultPda(validator)))!.isWritable);
+});
+
+test("escrow top-up targets the same escrow PDA the program checks", () => {
+  const [payer, player] = [1, 2].map(() => Keypair.generate().publicKey);
+  const ix = topUpActionEscrowIx(payer, player, 5_000_000n);
+  assert.ok(ix.keys.some((k) => k.pubkey.equals(escrowPda(player))));
+});
+
+test("pay_out / mark_settled use the per-card Payout PDA", async () => {
+  const [keeper, authority, mint] = [1, 2, 3].map(() => Keypair.generate().publicKey);
+  const expected = payoutPda(playerPda(authority), 7n);
+  const pay = await payOutIx(program, keeper, authority, 1, mint, 7n);
+  assert.ok(pay.keys.some((k) => k.pubkey.equals(expected)));
+  const mark = await markSettledIx(program, authority, 7n);
+  assert.ok(mark.keys.some((k) => k.pubkey.equals(expected)));
 });

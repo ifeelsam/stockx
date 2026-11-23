@@ -6,7 +6,10 @@ use anchor_lang::{
 };
 use ephemeral_rollups_sdk::{
     anchor::{DelegationProgram, MagicProgram},
+    consts::MAGIC_CONTEXT_ID,
+    dlp_api::discriminator::DlpDiscriminator,
     pda::{
+        ephemeral_balance_pda_from_payer,
         delegate_buffer_pda_from_delegated_account_and_owner_program, delegation_metadata_pda_from_delegated_account,
         delegation_record_pda_from_delegated_account,
     },
@@ -15,7 +18,7 @@ use magicsvm::{MagicSVM, TransactionTarget};
 use scratchers::{
     error::ScratchError,
     instruction as ix_data,
-    state::{Card, CardState, Config, Player, Series, Tier, VaultState},
+    state::{Card, CardState, Config, Payout, Player, Series, Tier, VaultState},
 };
 use solana_address::Address;
 use solana_clock::Clock;
@@ -385,5 +388,216 @@ fn insufficient_inventory_blocks_buys_and_sync_is_gated() {
     let rogue = ix(ix_data::SyncInventory { added_shares: 1_000_000_000 },
         scratchers::accounts::SyncInventory { config: e.config, authority: pk(&user.pubkey()), vault_state: e.vault });
     let err = try_send(&mut e.svm, Ephemeral, &[&user], rogue).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+}
+
+// ---- settlement: claim_all → commit + Magic Action → pay_out --------------------------------------
+
+fn token_account(mint: &Pubkey, owner: &Pubkey, amount: u64) -> solana_account::Account {
+    let mut d = vec![0u8; 165];
+    d[0..32].copy_from_slice(mint.as_ref());
+    d[32..64].copy_from_slice(owner.as_ref());
+    d[64..72].copy_from_slice(&amount.to_le_bytes());
+    d[108] = 1; // initialized
+    solana_account::Account { lamports: 2_039_280, data: d, owner: addr(anchor_spl::token::ID), executable: false, rent_epoch: 0 }
+}
+fn token_amount(svm: &MagicSVM, a: &Pubkey) -> u64 {
+    u64::from_le_bytes(svm.get_account(&addr(*a)).map(|x| x.data[64..72].try_into().unwrap()).unwrap_or([0; 8]))
+}
+fn force_randomness(svm: &mut MagicSVM, r: u64) {
+    let mut seed = [0u8; 32];
+    seed[0..8].copy_from_slice(&r.to_le_bytes());
+    svm.set_vrf_randomness(Some(seed));
+}
+fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    anchor_spl::associated_token::get_associated_token_address(owner, mint)
+}
+
+/// Vault stocked on Solana, the player's stock ATA created, escrow (action rent payer) topped up.
+fn prep_settlement(e: &mut Env, fund_escrow: bool, create_user_ata: bool) -> (Pubkey, Pubkey) {
+    let (vault_token, user_ata) = (ata(&e.vault, &e.mint), ata(&pk(&e.user.pubkey()), &e.mint));
+    e.svm.set_account(addr(vault_token), token_account(&e.mint, &e.vault, 100_000_000)).unwrap();
+    let u = pk(&e.user.pubkey());
+    let create_ata = Instruction {
+        program_id: addr(anchor_spl::associated_token::ID),
+        accounts: vec![
+            AccountMeta::new(addr(u), true), AccountMeta::new(addr(user_ata), false), AccountMeta::new_readonly(addr(u), false),
+            AccountMeta::new_readonly(addr(e.mint), false), AccountMeta::new_readonly(addr(system_program::ID), false),
+            AccountMeta::new_readonly(addr(anchor_spl::token::ID), false),
+        ],
+        data: vec![1], // CreateIdempotent
+    };
+    let user = e.user.insecure_clone();
+    if create_user_ata {
+        send(&mut e.svm, Base, &[&user], create_ata, "create user ata");
+    }
+    if fund_escrow {
+        let escrow = ephemeral_balance_pda_from_payer(&e.player, 255);
+        let mut data = DlpDiscriminator::TopUpEphemeralBalance.to_vec();
+        data.extend_from_slice(&5_000_000u64.to_le_bytes());
+        data.push(255);
+        let top_up = Instruction {
+            program_id: addr(DelegationProgram::id()),
+            accounts: vec![
+                AccountMeta::new(addr(u), true), AccountMeta::new_readonly(addr(e.player), false),
+                AccountMeta::new(addr(escrow), false), AccountMeta::new_readonly(addr(system_program::ID), false),
+            ],
+            data,
+        };
+        send(&mut e.svm, Base, &[&user], top_up, "top up escrow");
+    }
+    (vault_token, user_ata)
+}
+
+/// One winning card (1x) and one losing card, both revealed.
+fn buy_one_win_one_loss(e: &mut Env) {
+    let user = e.user.insecure_clone();
+    for r in [70_000u64, 0] {
+        force_randomness(&mut e.svm, r);
+        let buy = buy_ix(e, &user, 1, u64::MAX);
+        send(&mut e.svm, Ephemeral, &[&user], buy, "buy_card");
+        for res in fulfill(&mut e.svm) {
+            res.unwrap();
+        }
+    }
+}
+
+fn claim_ix(e: &Env) -> Instruction {
+    let fee_vault = Pubkey::find_program_address(&[b"magic-fee-vault", e.validator.as_ref()], &DelegationProgram::id()).0;
+    ix(ix_data::ClaimAll { series_id: 1 }, scratchers::accounts::ClaimAll {
+        signer: pk(&e.user.pubkey()), authority: pk(&e.user.pubkey()), player: e.player, series: e.series, vault_state: e.vault,
+        delegation_record_player: delegation_record_pda_from_delegated_account(&e.player), magic_fee_vault: fee_vault,
+        magic_context: MAGIC_CONTEXT_ID, magic_program: MagicProgram::id() })
+}
+
+fn payout_pda(e: &Env, card_id: u64) -> Pubkey {
+    pda(&[b"payout", e.player.as_ref(), &card_id.to_le_bytes()])
+}
+
+fn keeper_pay_out_ix(e: &Env, card_id: u64, vault_token: Pubkey, user_ata: Pubkey) -> Instruction {
+    ix(ix_data::PayOut { card_id }, scratchers::accounts::PayOut {
+        config: e.config, keeper: pk(&e.admin.pubkey()), player: e.player, series: e.series, vault_state: e.vault,
+        vault_token, dest: user_ata, stock_mint: e.mint, payout: payout_pda(e, card_id),
+        token_program: anchor_spl::token::ID, system_program: system_program::ID })
+}
+
+fn card_by_id(p: &Player, id: u64) -> Card {
+    *p.cards.iter().find(|c| c.id == id && c.state != CardState::Empty as u8).unwrap()
+}
+
+#[test]
+fn claim_all_commits_and_magic_action_pays_out_once() {
+    let mut e = setup(10_000_000, 100_000_000, default_tiers());
+    let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
+    buy_one_win_one_loss(&mut e);
+    let user = e.user.insecure_clone();
+
+    let claim = claim_ix(&e);
+    send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
+
+    // Rollup view: loser settled on the spot, winner awaiting payout; accounting released.
+    let p = read_player(&e.svm, Ephemeral, &e.player);
+    assert_eq!(card_by_id(&p, 1).state, CardState::Settled as u8, "losing card settles immediately");
+    assert_eq!(card_by_id(&p, 0).state, CardState::ClaimRequested as u8);
+    let v: VaultState = read(&e.svm, Ephemeral, &e.vault);
+    assert_eq!((v.reserved_shares, v.available_shares_mirror), (0, 100_000_000 - 5_000));
+
+    // Base layer: the action ran. Payout receipt exists and the shares are in the player's wallet.
+    let payout: Payout = read(&e.svm, Base, &payout_pda(&e, 0));
+    assert_eq!(payout.shares, 5_000);
+    assert_eq!(token_amount(&e.svm, &user_ata), 5_000);
+    assert_eq!(token_amount(&e.svm, &vault_token), 100_000_000 - 5_000);
+
+    // Client/keeper confirms the payout, then marks the slot settled (anyone may, with proof).
+    let mark = ix(ix_data::MarkSettled { card_id: 0 }, scratchers::accounts::MarkSettled {
+        authority: pk(&e.user.pubkey()), player: e.player, payout: payout_pda(&e, 0) });
+    send(&mut e.svm, Ephemeral, &[&user], mark, "mark_settled");
+    assert_eq!(card_by_id(&read_player(&e.svm, Ephemeral, &e.player), 0).state, CardState::Settled as u8);
+
+    // A second pay_out for the same card is refused: exactly once.
+    let again = keeper_pay_out_ix(&e, 0, vault_token, user_ata);
+    let err = try_send(&mut e.svm, Base, &[&e.admin.insecure_clone()], again).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::AlreadyPaid)) || err.contains(&custom(ScratchError::BadState)), "{err}");
+    assert_eq!(token_amount(&e.svm, &user_ata), 5_000, "no double pay");
+}
+
+#[test]
+fn dropped_magic_action_is_repaired_by_keeper_exactly_once() {
+    // MagicSVM runs the action atomically with the tx (a failing action rolls everything back), but a
+    // real validator lands the commit and drops the action. Reconstruct that state: let claim_all
+    // succeed, then erase the action's base-layer effects (receipt + token movement).
+    let mut e = setup(10_000_000, 100_000_000, default_tiers());
+    let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
+    buy_one_win_one_loss(&mut e);
+    let user = e.user.insecure_clone();
+    let claim = claim_ix(&e);
+    send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
+    e.svm.set_account(addr(payout_pda(&e, 0)), solana_account::Account::default()).unwrap();
+    e.svm.set_account(addr(user_ata), token_account(&e.mint, &pk(&user.pubkey()), 0)).unwrap();
+    e.svm.set_account(addr(vault_token), token_account(&e.mint, &e.vault, 100_000_000)).unwrap();
+
+    assert!(e.svm.get_account(&addr(payout_pda(&e, 0))).is_none(), "action dropped: no receipt");
+    assert_eq!(card_by_id(&read_player(&e.svm, Base, &e.player), 0).state, CardState::ClaimRequested as u8, "commit landed");
+
+    // The keeper (or anyone it delegates to) repairs it; it can only ever pay once.
+    let admin = e.admin.insecure_clone();
+    let repair = keeper_pay_out_ix(&e, 0, vault_token, user_ata);
+    send(&mut e.svm, Base, &[&admin], repair, "keeper pay_out");
+    assert_eq!(token_amount(&e.svm, &user_ata), 5_000);
+    assert_eq!(token_amount(&e.svm, &vault_token), 100_000_000 - 5_000);
+    let payout: Payout = read(&e.svm, Base, &payout_pda(&e, 0));
+    assert_eq!(payout.shares, 5_000);
+
+    let again = keeper_pay_out_ix(&e, 0, vault_token, user_ata);
+    let err = try_send(&mut e.svm, Base, &[&admin], again).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::AlreadyPaid)), "second pay_out must be AlreadyPaid: {err}");
+    assert_eq!(token_amount(&e.svm, &user_ata), 5_000, "no double pay");
+}
+
+#[test]
+fn failing_action_does_not_commit_in_magicsvm_and_claim_can_be_retried() {
+    // Missing stock ATA: the action fails. MagicSVM rolls the claim back (ER card stays Revealed), so a
+    // retry after the wallet is ready succeeds and pays exactly once.
+    let mut e = setup(10_000_000, 100_000_000, default_tiers());
+    let (_, user_ata) = prep_settlement(&mut e, true, false);
+    buy_one_win_one_loss(&mut e);
+    let user = e.user.insecure_clone();
+    let claim = claim_ix(&e);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], claim).unwrap_err();
+    assert!(err.contains("Custom(3012)"), "AccountNotInitialized on the missing ATA: {err}");
+    assert_eq!(card_by_id(&read_player(&e.svm, Ephemeral, &e.player), 0).state, CardState::Revealed as u8);
+    assert_eq!(read::<VaultState>(&e.svm, Ephemeral, &e.vault).available_shares_mirror, 100_000_000, "accounting rolled back too");
+
+    prep_settlement(&mut e, false, true);
+    let claim = claim_ix(&e);
+    send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all retry");
+    assert_eq!(token_amount(&e.svm, &user_ata), 5_000);
+}
+
+#[test]
+fn pay_out_is_not_callable_by_strangers() {
+    let mut e = setup(10_000_000, 100_000_000, default_tiers());
+    let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
+    buy_one_win_one_loss(&mut e);
+    let user = e.user.insecure_clone();
+    let claim = claim_ix(&e);
+    send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
+    // (action already paid card 0; use a fresh attacker-signed keeper call and a direct action call)
+    let attacker = Keypair::new();
+    e.svm.airdrop(&attacker.pubkey(), 1_000_000_000).unwrap();
+    let mut forged = keeper_pay_out_ix(&e, 0, vault_token, user_ata);
+    forged.accounts[1] = AccountMeta::new(attacker.pubkey(), true); // keeper slot
+    let err = try_send(&mut e.svm, Base, &[&attacker], forged).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+
+    // Calling the action entrypoint directly: the escrow cannot sign, so it is rejected.
+    let escrow = ephemeral_balance_pda_from_payer(&e.player, 255);
+    let direct = ix(ix_data::PayOutAction { card_id: 0 }, scratchers::accounts::PayOutAction {
+        player: e.player, series: e.series, vault_state: e.vault, vault_token, dest: user_ata, stock_mint: e.mint,
+        payout: payout_pda(&e, 0), token_program: anchor_spl::token::ID, system_program: system_program::ID,
+        source_program: scratchers::ID, escrow_auth: e.player, escrow });
+    let mut direct = direct;
+    direct.accounts.iter_mut().find(|m| m.pubkey == addr(escrow)).unwrap().is_signer = false; // nobody can sign for it
+    let err = try_send(&mut e.svm, Base, &[&attacker], direct).unwrap_err();
     assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
 }

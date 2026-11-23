@@ -15,3 +15,14 @@ export const payoutPda = (player: PublicKey, cardId: bigint) => {
   b.writeBigUInt64LE(cardId);
   return find([Buffer.from("payout"), player.toBuffer(), b]);
 };
+
+const DLP = new PublicKey("DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh");
+/** Delegation record of a delegated account (its validator derives the magic fee vault). */
+export const delegationRecordPda = (account: PublicKey) =>
+  PublicKey.findProgramAddressSync([Buffer.from("delegation"), account.toBuffer()], DLP)[0];
+/** Validator-scoped fee vault used when committing from a delegated payer. */
+export const magicFeeVaultPda = (validator: PublicKey) =>
+  PublicKey.findProgramAddressSync([Buffer.from("magic-fee-vault"), validator.toBuffer()], DLP)[0];
+/** Escrow that pays for post-commit actions (rent) on behalf of `authority`; index 255 is the action default. */
+export const escrowPda = (authority: PublicKey, index = 255) =>
+  PublicKey.findProgramAddressSync([Buffer.from("balance"), authority.toBuffer(), Buffer.from([index])], DLP)[0];

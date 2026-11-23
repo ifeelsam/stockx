@@ -14,7 +14,21 @@ pub struct Signup<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Lamports the Player PDA keeps above rent on the rollup: it is the payer of its own commits,
+/// and `magic_fee_vault` charges from the 26th commit on.
+pub const PLAYER_FEE_RESERVE: u64 = 10_000_000;
+
 pub fn signup(ctx: Context<Signup>) -> Result<()> {
+    anchor_lang::system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.key(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.authority.to_account_info(),
+                to: ctx.accounts.player.to_account_info(),
+            },
+        ),
+        PLAYER_FEE_RESERVE,
+    )?;
     let mut p = ctx.accounts.player.load_init()?;
     p.authority = ctx.accounts.authority.key();
     p.bump = ctx.bumps.player;

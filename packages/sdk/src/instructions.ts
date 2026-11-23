@@ -1,7 +1,9 @@
 import BN from "bn.js";
+import { createTopUpEscrowInstruction } from "@magicblock-labs/ephemeral-rollups-sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
-import { configPda, feedPda, playerPda, seriesPda, vaultPda } from "./pda.js";
+import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, vaultPda } from "./pda.js";
 import type { ScratchersProgram } from "./program.js";
 import type { Tier } from "./tiers.js";
 import { totalWeight } from "./tiers.js";
@@ -137,3 +139,50 @@ export const undelegatePlayerIx = (p: ScratchersProgram, authority: PublicKey) =
 /** Rollup. Credit the inventory mirror after transferring stock into the vault token account on Solana. */
 export const syncInventoryIx = (p: ScratchersProgram, authority: PublicKey, stockMint: PublicKey, addedShares: bigint) =>
   p.methods.syncInventory(new BN(addedShares.toString())).accountsPartial({ authority, vaultState: vaultPda(stockMint) }).instruction();
+
+// ---- settlement ---------------------------------------------------------------------------
+
+/** Base layer: the player's stock ATA must exist before a win can be paid (created at signup). */
+export const createStockAtaIx = (payer: PublicKey, owner: PublicKey, stockMint: PublicKey) =>
+  createAssociatedTokenAccountIdempotentInstruction(payer, getAssociatedTokenAddressSync(stockMint, owner), owner, stockMint);
+
+/** Base layer: fund the escrow that pays the Payout receipt rent for post-commit actions (~0.0011 SOL per card). */
+export const topUpActionEscrowIx = (payer: PublicKey, player: PublicKey, lamports: bigint) =>
+  createTopUpEscrowInstruction(escrowPda(player), player, payer, lamports, 255);
+
+/** Rollup: claims up to 8 revealed cards of one series; commit + Magic Action pays shares on Solana. */
+export const claimAllIx = (p: ScratchersProgram, signer: PublicKey, authority: PublicKey, seriesId: number, stockMint: PublicKey, validator: PublicKey) =>
+  p.methods
+    .claimAll(seriesId)
+    .accountsPartial({
+      signer,
+      authority,
+      player: playerPda(authority),
+      series: seriesPda(seriesId),
+      vaultState: vaultPda(stockMint),
+      delegationRecordPlayer: delegationRecordPda(playerPda(authority)),
+      magicFeeVault: magicFeeVaultPda(validator),
+      magicContext: MAGIC_CONTEXT_ID,
+      magicProgram: MAGIC_PROGRAM_ID,
+    })
+    .instruction();
+
+/** Rollup: after the base-layer Payout exists, free the slot. Anyone may call with that proof. */
+export const markSettledIx = (p: ScratchersProgram, authority: PublicKey, cardId: bigint) =>
+  p.methods.markSettled(new BN(cardId.toString())).accountsPartial({ authority, player: playerPda(authority) }).instruction();
+
+/** Base layer, keeper only: repairs a dropped Magic Action. Fails with AlreadyPaid if the card was paid. */
+export const payOutIx = (p: ScratchersProgram, keeper: PublicKey, authority: PublicKey, seriesId: number, stockMint: PublicKey, cardId: bigint) =>
+  p.methods
+    .payOut(new BN(cardId.toString()))
+    .accountsPartial({
+      keeper,
+      player: playerPda(authority),
+      series: seriesPda(seriesId),
+      vaultState: vaultPda(stockMint),
+      vaultToken: getAssociatedTokenAddressSync(stockMint, vaultPda(stockMint), true),
+      dest: getAssociatedTokenAddressSync(stockMint, authority),
+      stockMint,
+      payout: payoutPda(playerPda(authority), cardId),
+    })
+    .instruction();
