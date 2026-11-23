@@ -2,19 +2,26 @@
 
 **Submission deadline: UNCONFIRMED** — build.magicblock.app landing page is client-rendered and shows no date (checked 2026-11-24). Owner to confirm; update here. Code freeze = deadline − 3h.
 
-## Day 1
-- [x] Repo init, gitignore, secret-check hook
-- [x] Anchor scaffold: Config, Series, VaultState, Player (zero-copy, size-tested); `anchor build --arch v0` + 4 unit tests green (weights/RTP=76%, tier boundaries, Player < 10,240 B)
-- [x] Delegate / undelegate (player, vault, feed), sessions, push_price, buy_card + VRF, callback, cancel_pending (steps 3-4)
-- [x] MagicSVM gate green: buy 10 → 10 VRF reveals; late/spoofed callbacks rejected (`cd tests/magicsvm && cargo +1.93.0 test`)
-- [x] SDK skeleton: generated client, connections/router, Signer, PDAs, tier math, instruction builders (7 tests)
-- [x] Devnet setup script `pnpm --filter @scratchers/scripts setup:devnet` (mints, config, feeds, 4 series incl. DEMO, vaults, funding, delegation, inventory sync). Base-layer half verified on a local validator, idempotent. **Delegation + rollup sync not yet run: needs devnet SOL**
-- [ ] ...
+## Status (2026-11-24, session 1)
+
+**Done and green**
+- Program (`programs/scratchers`, Anchor 1.2.2 + SDK 0.18.0, build with `anchor build --arch v0`): config/series/vault/feed admin; player signup; delegate/undelegate (player, vault, feed); session keys with program-enforced spend cap; `push_price` (Path B); `buy_card` with liability reservation + one scoped VRF request per card; request-id-bound idempotent `vrf_callback`; `cancel_pending`; `deposit_usdc`/`withdraw_usdc`; `sync_inventory`; `claim_all` (commit + Magic Action) → `pay_out` (action + keeper entrypoints) + exactly-once `Payout`; `mark_settled`.
+- Tests: 8 Rust unit tests (`cargo test -p scratchers`), 16 MagicSVM integration tests (`cd tests/magicsvm && cargo +1.93.0 test`), 13 SDK tests, 5 keeper tests.
+- SDK (`packages/sdk`): generated client, connections + router `getDelegationStatus`, Signer/SessionKeySigner, PDAs, tier/share math, `cardArt`, instruction builders, account decoders + rollup subscriptions.
+- Scripts: `pnpm --filter @scratchers/scripts setup:devnet` (idempotent; base half verified on a local validator).
+- Keeper (`services/keeper`): price pusher (Hermes/dev, band-safe walk), payout repair, inventory refill, staleness watcher, `/metrics`, faucet. Faucet smoke-tested locally.
+
+**Not started**
+- Web app (`apps/web`), mobile app (`apps/mobile`), `packages/ui-tokens`, `packages/animations`, Rive/Lottie assets.
+- Program: Path A oracle read, `Stats` account, `sell_to_vault` + SDK `sell()`, commit-limit/fee-vault test, SDK `delegateSpl` wrapper for USDC onboarding.
+- Status-page poller + degraded banner (SDK helper).
 
 ## Blocked / needs owner
-- **Devnet SOL for the deployer** (~6 SOL: program deploy ≈ 4 + setup). `solana airdrop` and MagicBlock's RPC are rate-limited. Deployer: `solana address -k ~/.config/stockx/deployer.json` → fund at https://faucet.solana.com, then I deploy + run setup
-- **Price relay source**: `hermes.pyth.network` price endpoints now return **401 Unauthorized** (feed search still open). The keeper needs an authenticated Hermes-compatible endpoint or API key (e.g. a Pyth/RPC-provider key). Until then the keeper gets a pluggable source with a dev random-walk fallback
-- Deadline date
-- Privy app ID/secret, Telegram message to MagicBlock (see docs/TELEGRAM_DRAFT.md)
+- **Submission deadline** (not visible on build.magicblock.app; needed for the code-freeze time).
+- **Devnet SOL for the deployer** (~6 SOL: program deploy ≈ 4 + setup). Airdrop endpoints are rate-limited. Deployer address: `solana address -k ~/.config/stockx/deployer.json`; fund at https://faucet.solana.com. Then: deploy, run setup, start keeper, and verify on devnet: delegation, VRF callbacks, a real Magic Action (dropped-action behaviour), Magic ATA treasury creation.
+- **Hermes price access**: `hermes.pyth.network` price endpoints return 401. Need an authenticated Hermes-compatible endpoint/key (`HERMES_AUTH_HEADER`), or approve using the dev random-walk for the demo. Also send `docs/TELEGRAM_DRAFT.md` to MagicBlock (TSLA/NVDA on the rollup oracle).
+- **Privy app ID/secret** (web + mobile login), then the mobile Seeker/Privy risk test (Android emulator or device).
 
-- [x] Settlement (Day 3 core, ahead of schedule): claim_all → commit + Magic Action → pay_out + Payout receipt, keeper repair, mark_settled; 9 MagicSVM tests green
+## Verification gaps (honest list)
+- Nothing has run on devnet yet. MagicSVM models the delegation program, VRF, commits and Magic Actions, but not the router, real VRF oracle, commit limits/fees, or the real committor's drop-the-action behaviour.
+- Treasury token account for USDC must be created as a Magic ATA on the rollup (SDK `create_magic_ata_ix`); MagicSVM tests use delegated token accounts instead.
