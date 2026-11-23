@@ -4,7 +4,8 @@
 
 ## Day 1
 - [x] Repo init, gitignore, secret-check hook
-- [ ] Anchor scaffold (pinned ephemeral-rollups-sdk 0.18.x)
+- [x] Anchor scaffold: Config, Series, VaultState, Player (zero-copy, size-tested); `anchor build` + 4 unit tests green (weights/RTP=76%, tier boundaries, Player < 10,240 B)
+- [ ] Delegate / commit / undelegate instructions (step 3)
 - [ ] ...
 
 ## Blocked / needs owner

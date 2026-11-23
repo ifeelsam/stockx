@@ -1,0 +1,34 @@
+[package]
+name = "scratchers"
+version = "0.1.0"
+description = "Stock Scratchers: VRF scratch cards paying tokenized stock"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "scratchers"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = "=1.0.2"
+bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
+# Pinned: 0.20 breaks #[vrf]. `anchor` feature = Anchor 1.x.
+ephemeral-rollups-sdk = { version = "=0.18.0", features = ["anchor", "vrf"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+# solana-address pulls rand → getrandom 0.3, which has no SBF backend. Stub it (see lib.rs).
+[target.'cfg(target_os = "solana")'.dependencies]
+getrandom = "0.3"
