@@ -3,6 +3,7 @@ export * from "./connections.js";
 export * from "./signer.js";
 export * from "./pda.js";
 export * from "./tiers.js";
+export * from "./cardArt.js";
 export * from "./price.js";
 export * from "./program.js";
 export * from "./instructions.js";

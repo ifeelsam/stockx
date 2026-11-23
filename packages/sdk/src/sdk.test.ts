@@ -89,3 +89,51 @@ test("deposit/withdraw name the owner's ATA and the Config-owned treasury", asyn
   const wd = await withdrawUsdcIx(program, authority, usdc, 1n);
   assert.equal(wd.keys.length, dep.keys.length);
 });
+
+import { cardArt, FILLERS } from "./index.js";
+
+const seedFrom = (n: number) => {
+  const s = new Uint8Array(32);
+  let x = n >>> 0 || 1;
+  for (let i = 0; i < 32; i++) {
+    x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+    s[i] = x >>> 24;
+  }
+  return s;
+};
+const count = (xs: string[], v: string) => xs.filter((x) => x === v).length;
+
+test("cardArt: wins show exactly three matching tier symbols, losses never show a triple", () => {
+  let wins = 0;
+  for (let n = 1; n <= 3000; n++) {
+    const art = cardArt(seedFrom(n));
+    assert.equal(art.panels.length, 9);
+    assert.equal(art.win, art.multiplier > 0);
+    const triples = new Set(art.panels.filter((p) => count(art.panels, p) >= 3));
+    if (art.win) {
+      wins++;
+      assert.equal(triples.size, 1, `seed ${n}`);
+      assert.equal(count(art.panels, [...triples][0]), 3);
+      assert.deepEqual(art.winningPanels, art.panels.flatMap((p, i) => (p === [...triples][0] ? [i] : [])));
+    } else {
+      assert.equal(triples.size, 0, `seed ${n}`);
+      assert.equal(art.winningPanels.length, 0);
+    }
+    for (const f of FILLERS) assert.ok(count(art.panels, f) <= 2);
+  }
+  assert.ok(wins > 800 && wins < 1500, `win rate sanity: ${wins}/3000`); // ≈ 38% expected
+});
+
+test("cardArt output is pinned (web/mobile drift would break verified cards)", () => {
+  const loss = Uint8Array.from({ length: 32 }, (_, i) => (i * 37 + 11) & 255);
+  assert.deepEqual(cardArt(loss), {
+    tier: 0, multiplier: 0, win: false, winningPanels: [],
+    panels: ["moon", "leaf", "fish", "wave", "fish", "wave", "key", "dice", "leaf"],
+  });
+  const fiveX = Uint8Array.from({ length: 32 }, (_, i) => (i * 31 + 3 * 31) & 255);
+  assert.deepEqual(cardArt(fiveX), {
+    tier: 3, multiplier: 5, win: true, winningPanels: [1, 5, 8],
+    panels: ["flame", "star", "dice", "dice", "leaf", "star", "moon", "leaf", "star"],
+  });
+  assert.deepEqual(cardArt(loss), cardArt(Uint8Array.from(loss)));
+});
