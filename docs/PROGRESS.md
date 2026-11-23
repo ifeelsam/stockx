@@ -4,7 +4,7 @@
 
 ## Day 1
 - [x] Repo init, gitignore, secret-check hook
-- [x] Anchor scaffold: Config, Series, VaultState, Player (zero-copy, size-tested); `anchor build` + 4 unit tests green (weights/RTP=76%, tier boundaries, Player < 10,240 B)
+- [x] Anchor scaffold: Config, Series, VaultState, Player (zero-copy, size-tested); `anchor build --arch v0` + 4 unit tests green (weights/RTP=76%, tier boundaries, Player < 10,240 B)
 - [ ] Delegate / commit / undelegate instructions (step 3)
 - [ ] ...
 

@@ -20,8 +20,8 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
-anchor-spl = "=1.0.2"
+anchor-lang = { version = "=1.2.2", features = ["init-if-needed"] }
+anchor-spl = "=1.2.2"
 bytemuck = { version = "1", features = ["derive", "min_const_generics"] }
 # Pinned: 0.20 breaks #[vrf]. `anchor` feature = Anchor 1.x.
 ephemeral-rollups-sdk = { version = "=0.18.0", features = ["anchor", "vrf"] }
