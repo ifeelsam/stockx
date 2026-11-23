@@ -8,9 +8,11 @@
 - [x] Delegate / undelegate (player, vault, feed), sessions, push_price, buy_card + VRF, callback, cancel_pending (steps 3-4)
 - [x] MagicSVM gate green: buy 10 → 10 VRF reveals; late/spoofed callbacks rejected (`cd tests/magicsvm && cargo +1.93.0 test`)
 - [x] SDK skeleton: generated client, connections/router, Signer, PDAs, tier math, instruction builders (7 tests)
-- [ ] Devnet scripts: mints, series, vault funding (step 5)
+- [x] Devnet setup script `pnpm --filter @scratchers/scripts setup:devnet` (mints, config, feeds, 4 series incl. DEMO, vaults, funding, delegation, inventory sync). Base-layer half verified on a local validator, idempotent. **Delegation + rollup sync not yet run: needs devnet SOL**
 - [ ] ...
 
 ## Blocked / needs owner
+- **Devnet SOL for the deployer** (~6 SOL: program deploy ≈ 4 + setup). `solana airdrop` and MagicBlock's RPC are rate-limited. Deployer: `solana address -k ~/.config/stockx/deployer.json` → fund at https://faucet.solana.com, then I deploy + run setup
+- **Price relay source**: `hermes.pyth.network` price endpoints now return **401 Unauthorized** (feed search still open). The keeper needs an authenticated Hermes-compatible endpoint or API key (e.g. a Pyth/RPC-provider key). Until then the keeper gets a pluggable source with a dev random-walk fallback
 - Deadline date
 - Privy app ID/secret, Telegram message to MagicBlock (see docs/TELEGRAM_DRAFT.md)
