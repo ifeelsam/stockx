@@ -71,3 +71,12 @@ test("pyth pro rows convert to feed units (-8) and seconds", () => {
   // SOL already at -8: unchanged
   assert.equal(parseProRow("mSOL", { price: 6922218555, exponent: -8, publish_time: 1_000_000 }).price, 6922218555n);
 });
+
+import { shouldHold } from "./prices.js";
+test("hold-last-price applies only to feeds the source can serve, every 30 s", () => {
+  const none = new Set<string>();
+  assert.equal(shouldHold("mTSLA", undefined, 1_000_000, none), true);
+  assert.equal(shouldHold("mTSLA", 1_000_000 - 10_000, 1_000_000, none), false, "recent push");
+  assert.equal(shouldHold("mTSLA", 1_000_000 - 30_000, 1_000_000, none), true);
+  assert.equal(shouldHold("mNVDA", undefined, 1_000_000, new Set(["mNVDA"])), false, "not entitled: stays paused");
+});

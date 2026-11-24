@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { rtp, totalWeight } from "@scratchers/sdk";
 import { tierByIndex } from "@scratchers/ui-tokens";
-import { SERIES, TIER_NAMES } from "@scratchers/app-core";
+import { SERIES, TIER_NAMES, VISIBLE_SERIES } from "@scratchers/app-core";
 
 export default function Prizes() {
   const [sid, setSid] = useState(1);
@@ -15,7 +15,7 @@ export default function Prizes() {
         <p className="mt-1 text-dim">Frozen on chain before sales open. Result = u64(seed[0..8]) mod {total.toLocaleString()} → tier.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {SERIES.map((x) => (
+        {VISIBLE_SERIES.map((x) => (
           <button key={x.id} onClick={() => setSid(x.id)} className={`rounded-lg border px-3 py-1.5 text-sm ${x.id === sid ? "border-money text-money" : "border-line text-dim"}`}>
             {x.name}
           </button>

@@ -30,6 +30,8 @@ export type Game = {
   history: Record<keyof Prices, { t: number; v: number }[]>;
   marketClosed: boolean;
   setMarketClosed(v: boolean): void;
+  /** chain backend: per-feed pause (its price is stale). When absent, `marketClosed` pauses every equity feed. */
+  paused?: Partial<Record<keyof Prices, boolean>>;
   /** required MagicBlock services currently reported Down */
   degraded: string[];
   cards: UiCard[];
@@ -56,6 +58,8 @@ export const useGame = () => {
 const START: Prices = { TSLA: 248.31, NVDA: 141.07, SOL: 168.42 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const isEquity = (feed: string) => feed !== "SOL";
+/** Is buying on this price feed paused right now? */
+export const isPaused = (g: Pick<Game, "marketClosed" | "paused">, feed: keyof Prices) => (g.paused ? !!g.paused[feed] : isEquity(feed) && g.marketClosed);
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [usdc, setUsdc] = useState(0);

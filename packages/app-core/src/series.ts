@@ -12,6 +12,8 @@ export type SeriesInfo = {
   alwaysOn: boolean;
   tiers: Tier[];
   blurb: string;
+  /** deployed on-chain but not offered in the UI (NVDA: price grant missing; SOL: only existed to cover market closures) */
+  hidden?: boolean;
 };
 
 /** Mirrors scripts/src/setup.ts. Series 4 has the jackpot weight raised 2 → 5,000 (≈ 1 in 20). */
@@ -20,11 +22,14 @@ const DEMO_TIERS: Tier[] = DEFAULT_TIERS.map((t) =>
 );
 
 export const SERIES: SeriesInfo[] = [
-  { id: 1, name: "Tesla Scratcher", ticker: "mTSLA", feed: "TSLA", ticketUsd: 1, demo: false, alwaysOn: false, tiers: DEFAULT_TIERS, blurb: "Win tokenized Tesla. Pauses when US markets close." },
-  { id: 2, name: "Nvidia Scratcher", ticker: "mNVDA", feed: "NVDA", ticketUsd: 1, demo: false, alwaysOn: false, tiers: DEFAULT_TIERS, blurb: "Win tokenized Nvidia. Pauses when US markets close." },
-  { id: 3, name: "Solana Scratcher", ticker: "mSOL", feed: "SOL", ticketUsd: 1, demo: false, alwaysOn: true, tiers: DEFAULT_TIERS, blurb: "Crypto-priced, always on." },
+  { id: 1, name: "Tesla Scratcher", ticker: "mTSLA", feed: "TSLA", ticketUsd: 1, demo: false, alwaysOn: false, tiers: DEFAULT_TIERS, blurb: "Win tokenized Tesla. Priced around the clock from the last market price." },
+  { id: 2, name: "Nvidia Scratcher", ticker: "mNVDA", feed: "NVDA", ticketUsd: 1, demo: false, alwaysOn: false, tiers: DEFAULT_TIERS, blurb: "Win tokenized Nvidia. Priced around the clock from the last market price.", hidden: true },
+  { id: 3, name: "Solana Scratcher", ticker: "mSOL", feed: "SOL", ticketUsd: 1, demo: false, alwaysOn: true, tiers: DEFAULT_TIERS, blurb: "Crypto-priced, always on.", hidden: true },
   { id: 4, name: "Tesla · Demo Odds", ticker: "mTSLA", feed: "TSLA", ticketUsd: 1, demo: true, alwaysOn: false, tiers: DEMO_TIERS, blurb: "Boosted jackpot, about 1 in 20. For the demo only." },
 ];
+
+/** What the apps offer. Hidden series stay deployed (their cards, if any, still render). */
+export const VISIBLE_SERIES = SERIES.filter((s) => !s.hidden);
 
 export const seriesById = (id: number) => SERIES.find((s) => s.id === id) ?? SERIES[0];
 

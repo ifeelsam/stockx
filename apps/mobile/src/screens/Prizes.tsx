@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { rtp, totalWeight } from "@scratchers/sdk/pure";
-import { SERIES, TIER_NAMES } from "@scratchers/app-core";
+import { SERIES, TIER_NAMES, VISIBLE_SERIES } from "@scratchers/app-core";
 import { colors, tierByIndex } from "@scratchers/ui-tokens";
 import { ui } from "../theme";
 
@@ -14,7 +14,7 @@ export function Prizes() {
       <Text style={ui.h1}>Prize table</Text>
       <Text style={ui.dim}>Frozen on chain before sales open. tier = u64(seed[0..8]) mod {total.toLocaleString()}.</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {SERIES.map((x) => (
+        {VISIBLE_SERIES.map((x) => (
           <Pressable key={x.id} onPress={() => setSid(x.id)} style={{ borderColor: x.id === sid ? colors.money : colors.line, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}>
             <Text style={{ color: x.id === sid ? colors.money : colors.textDim }}>{x.name}</Text>
           </Pressable>

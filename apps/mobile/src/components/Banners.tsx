@@ -8,7 +8,7 @@ export function Banners() {
   const settling = g.cards.filter((c) => c.state === "claiming").length;
   const items: { k: string; bg: string; fg: string; t: string }[] = [];
   if (g.degraded.length) items.push({ k: "deg", bg: colors.danger + "26", fg: colors.danger, t: `MagicBlock degraded (${g.degraded.join(", ")})` });
-  if (g.marketClosed) items.push({ k: "mkt", bg: colors.warn + "26", fg: colors.warn, t: "US market closed: TSLA / NVDA paused. Try SOL." });
+  if (g.marketClosed) items.push({ k: "mkt", bg: colors.warn + "26", fg: colors.warn, t: "Price paused: no fresh market price." });
   if (pending) items.push({ k: "vrf", bg: colors.surfaceHi, fg: colors.text, t: `Randomness pending for ${pending} card${pending > 1 ? "s" : ""}…` });
   if (settling) items.push({ k: "set", bg: colors.surfaceHi, fg: colors.text, t: `Settling ${settling} payout${settling > 1 ? "s" : ""} on Solana…` });
   return (

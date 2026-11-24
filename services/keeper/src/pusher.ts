@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { feedPda, pushPriceIx, type ScratchersProgram } from "@scratchers/sdk";
 import type { Connection, Keypair } from "@solana/web3.js";
 import { log } from "./log.js";
-import { isUsMarketOpen, planWalk, type PriceSource } from "./prices.js";
+import { isUsMarketOpen, planWalk, shouldHold, type PriceSource } from "./prices.js";
 import { sendIx } from "./tx.js";
 
 export type FeedConf = { name: string; idHex: string };
@@ -33,6 +33,18 @@ export function startPusher(o: { program: ScratchersProgram; rollup: Connection;
           await sendIx(rollup, keeper, [await pushPriceIx(program, keeper.publicKey, id, steps[i], last ? q.conf : 0n, publishTs)], { confirm: !last || steps.length > 1 });
         }
         lastPush.set(q.feed, { price: q.price, publishTs: Math.max(q.publishTs, ts), at: Date.now() });
+      }
+      // Source had nothing new for a feed (market closed): keep the last known price fresh instead of pausing.
+      for (const f of feeds) {
+        if (!shouldHold(f.name, lastPush.get(f.name)?.at, Date.now(), source.unavailable?.() ?? new Set())) continue;
+        const id = Uint8Array.from(Buffer.from(f.idHex, "hex"));
+        const prev = lastPush.get(f.name);
+        const chain = prev ? { price: prev.price, ts: prev.publishTs } : await readOnChain(program, rollup, id);
+        if (chain.price <= 0n) continue;
+        const ts = Math.max(chain.ts + 1, Math.floor(Date.now() / 1000));
+        await sendIx(rollup, keeper, [await pushPriceIx(program, keeper.publicKey, id, chain.price, 0n, ts)]);
+        if (!prev) log("info", "source has no new data: holding last price fresh", { feed: f.name });
+        lastPush.set(f.name, { price: chain.price, publishTs: ts, at: Date.now() });
       }
     } catch (e) {
       if (Date.now() - lastErr > 10_000) { lastErr = Date.now(); log("error", "price push failed", { source: source.name, err: (e as Error).message }); }

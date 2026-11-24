@@ -193,3 +193,28 @@ test("buyCardIx carries the series Stats account", async () => {
   const ix = await buyCardIx(program, { signer: u, authority: u, seriesId: 3, stockMint: m, feed: f, n: 1, maxPrice: 1n, callerSeed: new Uint8Array(32) });
   assert.ok(ix.keys.some((k) => k.pubkey.equals(statsPda(3)) && k.isWritable));
 });
+
+import { Buffer as PolyBuffer } from "buffer/index.js"; // the npm polyfill, not Node builtin
+import { patchBuffer } from "./index.js";
+test("patchBuffer adds BigInt read/write to the buffer polyfill, matching Node", () => {
+  patchBuffer(PolyBuffer as never);
+  for (const v of [0n, 1n, 0xdeadbeefcafen, 2n ** 64n - 1n]) {
+    for (const [w, r] of [["writeBigUInt64LE", "readBigUInt64LE"], ["writeBigUInt64BE", "readBigUInt64BE"]] as const) {
+      const poly = PolyBuffer.alloc(10), node = Buffer.alloc(10);
+      (poly as any)[w](v, 1); (node as any)[w](v, 1);
+      assert.deepEqual([...poly], [...node], `${w} ${v}`);
+      assert.equal((poly as any)[r](1), v);
+    }
+  }
+  const s = PolyBuffer.alloc(8); (s as any).writeBigInt64LE(-2n);
+  assert.equal(s.toString("hex"), Buffer.from(new BigInt64Array([-2n]).buffer).toString("hex"));
+  assert.equal((s as any).readBigInt64LE(0), -2n);
+});
+
+test("patchBuffer reaches other Buffer copies (anything extending Uint8Array)", () => {
+  patchBuffer();
+  class Other extends Uint8Array {} // stands in for a bundler-injected second polyfill copy
+  const o = new Other(8) as unknown as { writeBigUInt64LE(v: bigint, off: number): number; readBigUInt64LE(off: number): bigint };
+  o.writeBigUInt64LE(1234567890123n, 0);
+  assert.equal(o.readBigUInt64LE(0), 1234567890123n);
+});

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { easing, timing, tierByMultiplier } from "@scratchers/ui-tokens";
-import { useGame, isEquity } from "@scratchers/app-core";
+import { useGame, isPaused } from "@scratchers/app-core";
 import { seriesById } from "@scratchers/app-core";
 import { SeriesPicker } from "@/components/SeriesPicker";
 import { ScratchCard } from "@/components/ScratchCard";
@@ -11,12 +11,12 @@ import { CountUp } from "@/components/CountUp";
 
 export default function Play() {
   const g = useGame();
-  const [sid, setSid] = useState(3);
+  const [sid, setSid] = useState(1);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [jackpot, setJackpot] = useState<number | null>(null);
   const s = seriesById(sid);
-  const paused = isEquity(s.feed) && g.marketClosed;
+  const paused = isPaused(g, s.feed);
   const live = g.cards.filter((c) => c.state !== "settled");
   const claimable = g.cards.filter((c) => c.state === "revealed");
   const winUsd = claimable.reduce((a, c) => a + c.shares * g.prices[seriesById(c.seriesId).feed], 0);
@@ -59,7 +59,7 @@ export default function Play() {
         <button onClick={() => run(g.faucet)} className="rounded-xl border border-line px-4 py-3 text-sm hover:bg-surface-hi">
           Get test funds (+50 mUSDC)
         </button>
-        {paused && <span className="text-sm text-warn">Market closed: pick the SOL series.</span>}
+        {paused && <span className="text-sm text-warn">Price paused: waiting for a fresh price.</span>}
         {err && <span className="text-sm text-danger">{err}</span>}
       </div>
 

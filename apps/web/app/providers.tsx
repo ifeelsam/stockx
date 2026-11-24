@@ -3,10 +3,13 @@ import { Buffer } from "buffer";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import type { ReactNode } from "react";
+import { patchBuffer } from "@scratchers/sdk";
 import { GameHost } from "@/components/GameHost";
 
 // web3.js / anchor expect a global Buffer in the browser
 if (typeof globalThis !== "undefined" && !(globalThis as { Buffer?: unknown }).Buffer) (globalThis as { Buffer?: unknown }).Buffer = Buffer;
+
+patchBuffer(Buffer); // the browser Buffer polyfill lacks BigInt read/write that web3.js/anchor use for u64
 
 const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 

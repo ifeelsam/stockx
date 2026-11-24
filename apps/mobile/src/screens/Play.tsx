@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { SERIES, isEquity, seriesById, useGame } from "@scratchers/app-core";
+import { VISIBLE_SERIES, isPaused, seriesById, useGame } from "@scratchers/app-core";
 import { colors, easing, timing, tierByMultiplier } from "@scratchers/ui-tokens";
 import { ScratchCard } from "../components/ScratchCard";
 import { JackpotOverlay } from "../components/JackpotOverlay";
@@ -11,13 +11,13 @@ import { ui } from "../theme";
 
 export function Play() {
   const g = useGame();
-  const [sid, setSid] = useState(3);
+  const [sid, setSid] = useState(1);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [jackpot, setJackpot] = useState<number | null>(null);
   const [burst, setBurst] = useState<{ id: number; colors: string[]; count: number } | null>(null);
   const s = seriesById(sid);
-  const paused = isEquity(s.feed) && g.marketClosed;
+  const paused = isPaused(g, s.feed);
   const live = g.cards.filter((c) => c.state !== "settled");
   const claimable = g.cards.filter((c) => c.state === "revealed");
   const winUsd = claimable.reduce((a, c) => a + c.shares * g.prices[seriesById(c.seriesId).feed], 0);
@@ -35,7 +35,7 @@ export function Play() {
           </View>
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-          {SERIES.map((x) => {
+          {VISIBLE_SERIES.map((x) => {
             const on = x.id === sid;
             return (
               <Pressable key={x.id} onPress={() => setSid(x.id)} style={[ui.card, { width: 190, borderColor: on ? colors.money : colors.line, backgroundColor: on ? colors.surfaceHi : colors.surface }]}>
@@ -55,7 +55,7 @@ export function Play() {
           <Pressable disabled={busy || paused} onPress={() => run(() => g.buy(sid, 10))} style={[ui.btn, { backgroundColor: colors.gold, opacity: busy || paused ? 0.4 : 1 }]}><Text style={ui.btnText}>Buy 10 · ${s.ticketUsd * 10}</Text></Pressable>
           <Pressable onPress={() => run(g.faucet)} style={[ui.btn, { borderColor: colors.line, borderWidth: 1 }]}><Text style={[ui.btnText, { color: colors.text, fontSize: 14 }]}>Get test funds</Text></Pressable>
         </View>
-        {paused && <Text style={{ color: colors.warn }}>Market closed: pick the SOL series.</Text>}
+        {paused && <Text style={{ color: colors.warn }}>Price paused: waiting for a fresh price.</Text>}
         {err && <Text style={{ color: colors.danger }}>{err}</Text>}
         {live.length === 0 && <Text style={ui.dim}>No cards yet. Grab test funds, then buy a pack.</Text>}
 

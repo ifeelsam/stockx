@@ -5,6 +5,17 @@ export type Quote = { feed: string; price: bigint; conf: bigint; publishTs: numb
 export interface PriceSource {
   readonly name: string;
   fetch(feedIdsHex: Record<string, string>): Promise<Quote[]>;
+  /** Feeds this source can never serve (e.g. not entitled). They are never "held": their series stays paused. */
+  unavailable?(): ReadonlySet<string>;
+}
+
+/**
+ * Tokenized stocks trade around the clock and the app tolerates coarse prices, so when the source has nothing
+ * new (US market closed) the pusher re-publishes the last known price with a fresh timestamp instead of letting
+ * the series pause. Feeds the source cannot serve at all are never held.
+ */
+export function shouldHold(feed: string, lastPushAtMs: number | undefined, nowMs: number, unavailable: ReadonlySet<string>, everyMs = 30_000): boolean {
+  return !unavailable.has(feed) && nowMs - (lastPushAtMs ?? 0) >= everyMs;
 }
 
 /** Rescale a Pyth-style (price, conf, expo) to the feed's fixed exponent (default -8), flooring. */
@@ -58,6 +69,7 @@ export class PythProSource implements PriceSource {
   readonly name = "pyth-pro";
   private lastSec = new Map<string, number>();
   private warned = new Set<string>();
+  unavailable() { return this.warned as ReadonlySet<string>; }
   constructor(private token: string, private ids: Record<string, number>, private url = "https://pyth.dourolabs.app", private lagS = 2) {}
   async fetch(feeds: Record<string, string>): Promise<Quote[]> {
     const sec = Math.floor(Date.now() / 1000) - this.lagS;

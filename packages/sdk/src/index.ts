@@ -11,3 +11,4 @@ export * from "./accounts.js";
 export * from "./sell.js";
 export * from "./status.js";
 export type { Scratchers } from "./generated/scratchers.js";
+export * from "./bufferPatch.js";

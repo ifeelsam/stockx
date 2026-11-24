@@ -1,14 +1,14 @@
 "use client";
-import { SERIES, type SeriesInfo } from "@scratchers/app-core";
-import { useGame, isEquity } from "@scratchers/app-core";
+import { VISIBLE_SERIES, type SeriesInfo } from "@scratchers/app-core";
+import { useGame, isPaused } from "@scratchers/app-core";
 import { Symbol } from "./Symbol";
 
 export function SeriesPicker({ value, onChange }: { value: number; onChange: (id: number) => void }) {
   const g = useGame();
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {SERIES.map((s: SeriesInfo) => {
-        const paused = isEquity(s.feed) && g.marketClosed;
+      {VISIBLE_SERIES.map((s: SeriesInfo) => {
+        const paused = isPaused(g, s.feed);
         const on = value === s.id;
         return (
           <button

@@ -16,7 +16,7 @@ import {
 } from "@scratchers/sdk";
 import { cardArt } from "@scratchers/sdk/pure";
 import { GameCtx, type Game, type Holding, type Prices, type UiCard } from "./game.js";
-import { seriesById } from "./series.js";
+import { seriesById, VISIBLE_SERIES } from "./series.js";
 
 export type Deployments = {
   program: string;
@@ -44,7 +44,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
 
   const [prices, setPrices] = useState<Prices>(EMPTY_PRICES);
   const [history, setHistory] = useState<Game["history"]>({ TSLA: [], NVDA: [], SOL: [] });
-  const [marketClosed, setMarketClosed] = useState(false);
+  const [paused, setPaused] = useState<NonNullable<Game["paused"]>>({});
   const [degraded, setDegraded] = useState<string[]>([]);
   const [usdc, setUsdc] = useState(0);
   const [rawCards, setRawCards] = useState<Awaited<ReturnType<typeof fetchPlayer>>["cards"]>([]);
@@ -68,17 +68,17 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     };
     loop(async () => {
       const next = { ...EMPTY_PRICES };
-      let closed = false;
+      const stale: NonNullable<Game["paused"]> = {};
       const now = Math.floor(Date.now() / 1000);
       for (const f of FEEDS) {
         const info = await c.rollup.getAccountInfo(new PublicKey(dep.feeds["m" + f].pda), "confirmed");
         if (!info) continue;
         const feed = base.coder.accounts.decode("priceFeed", info.data);
         next[f] = Number(feed.price.toString()) / 1e8;
-        if (f !== "SOL" && now - feed.publishTs.toNumber() > 60) closed = true;
+        stale[f] = now - feed.publishTs.toNumber() > 60; // each series pauses on its own feed's staleness
       }
       setPrices(next);
-      setMarketClosed(closed);
+      setPaused(stale);
       setHistory((h) => {
         const n = { ...h };
         for (const f of FEEDS) if (next[f]) n[f] = [...h[f].slice(-299), { t: now, v: next[f] }];
@@ -217,7 +217,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       if (!sd) throw new Error("series not deployed");
       const price = prices[s.feed];
       if (!price) throw new Error("price unavailable");
-      if (s.feed !== "SOL" && marketClosed) throw new Error("Market closed: price paused");
+      if (paused[s.feed]) throw new Error("Price paused: no fresh price for this series");
       const tx = new Transaction().add(
         await buyCardIx(rollup, {
           signer: sessionKey.publicKey,
@@ -233,7 +233,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       await signAndSend(c.rollup, sessionKey, tx);
       return [];
     },
-    [dep, prices, marketClosed, rollup, sessionKey, user, c],
+    [dep, prices, paused, rollup, sessionKey, user, c],
   );
 
   const claimAll = useCallback(async () => {
@@ -253,11 +253,12 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   }, [cards, dep, rollup, sessionKey, user, validator, c]);
 
   const faucet = useCallback(async () => {
+    if (setup !== "ready") throw new Error("Set up your account first (the Set up card above).");
     const r = await fetch(`${keeperUrl}/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet: user.toBase58() }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({ error: r.statusText }))).error ?? "faucet failed");
     await sleep(1500);
     await deposit();
-  }, [keeperUrl, user, deposit]);
+  }, [keeperUrl, user, deposit, setup]);
 
   const sell = useCallback(
     (ticker: string, shares: number) => {
@@ -274,8 +275,9 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       usdc,
       prices,
       history,
-      marketClosed,
+      marketClosed: VISIBLE_SERIES.some((x) => paused[x.feed]), // banner: any offered series is paused
       setMarketClosed: () => {},
+      paused,
       degraded,
       cards,
       holdings,
@@ -287,7 +289,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       setup: { status: setup, step, error, run },
       stats,
     }),
-    [usdc, prices, history, marketClosed, degraded, cards, holdings, buy, claimAll, faucet, sell, setup, step, error, run, stats],
+    [usdc, prices, history, paused, degraded, cards, holdings, buy, claimAll, faucet, sell, setup, step, error, run, stats],
   );
   return <GameCtx.Provider value={value}>{children}</GameCtx.Provider>;
 }
