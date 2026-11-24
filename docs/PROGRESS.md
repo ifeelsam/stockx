@@ -16,6 +16,8 @@
 
 - Sell path: `sell_to_vault` / `set_sell_quote` / `ack_sold` + `SellQuote`; SDK `sell()` (devnet vault + Payments API behind a mainnet-only flag); keeper quote poster + inventory credit; setup script inits quotes and a 1M mUSDC sell pool. 20 MagicSVM tests; live-verified on a local validator (real SDK tx → 149.25 mUSDC for 1 share @ $150).
 
+- `scripts/src/e2e.ts` (`pnpm --filter @scratchers/scripts e2e:devnet`): fresh user → signup → delegate → USDC via eSPL `delegateSpl` → Magic-ATA treasury → session key → buy 10 → 10 VRF reveals (tiers recomputed from seeds) → `claim_all` → shares on Solana. Typechecks; **never run** (needs the funded deployer + `setup:devnet`). First thing to run once the deployer has SOL.
+
 **Not started**
 - Web app on the chain backend (mock backend done), mobile app (`apps/mobile`), `packages/animations`, Rive asset.
 - Program: Path A oracle read, `Stats` account, commit-limit/fee-vault test, SDK `delegateSpl` wrapper for USDC onboarding.

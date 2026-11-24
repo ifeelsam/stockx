@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { createTopUpEscrowInstruction } from "@magicblock-labs/ephemeral-rollups-sdk";
+import { createMagicAtaInstruction, createTopUpEscrowInstruction, delegateSpl, withdrawSpl } from "@magicblock-labs/ephemeral-rollups-sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
@@ -217,3 +217,20 @@ export const depositUsdcIx = (p: ScratchersProgram, authority: PublicKey, usdcMi
 /** Owner only (a session key cannot withdraw). Returns USDC to the owner's rollup token account. */
 export const withdrawUsdcIx = (p: ScratchersProgram, authority: PublicKey, usdcMint: PublicKey, amountE6: bigint) =>
   p.methods.withdrawUsdc(new BN(amountE6.toString())).accountsPartial(fundsAccounts(authority, usdcMint)).instruction();
+
+// ---- USDC onboarding (eSPL) ------------------------------------------------------------------
+
+/**
+ * Base layer, owner signs (payer optional): deposit + delegate `amountE6` mock USDC so it appears at the
+ * owner's canonical ATA on the rollup. Pin the same `validator` the Player is delegated to.
+ * Legacy deposit builder (`idempotent: false`) as in the eSPL reference.
+ */
+export const depositToRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) =>
+  delegateSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: false, initVaultIfMissing: true });
+
+/** Base layer: bring USDC back from the rollup to the owner's base ATA (after `withdraw_usdc` on the rollup). */
+export const withdrawFromRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) =>
+  withdrawSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: false });
+
+/** Rollup tx (one-time, admin/keeper): create the Config-PDA treasury as a Magic ATA so `deposit_usdc` has a destination. */
+export const createTreasuryIx = (payer: PublicKey, usdcMint: PublicKey) => createMagicAtaInstruction(payer, configPda(), usdcMint);
