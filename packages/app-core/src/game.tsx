@@ -23,7 +23,7 @@ export type UiCard = {
 export type Holding = { ticker: string; feed: "TSLA" | "NVDA" | "SOL"; shares: number; costUsd: number };
 export type Prices = Record<"TSLA" | "NVDA" | "SOL", number>;
 
-type Game = {
+export type Game = {
   backend: "mock" | "chain";
   usdc: number;
   prices: Prices;
@@ -39,11 +39,14 @@ type Game = {
   claimAll(): Promise<void>;
   faucet(): Promise<void>;
   sell(ticker: string, shares: number): void;
+  /** chain backend only: account onboarding (signup, delegate, session, funds). Undefined on the mock. */
+  setup?: { status: "checking" | "needed" | "ready"; step: string; error: string | null; run(): Promise<void> };
   /** lifetime counters for the dashboard */
   stats: { sold: number; tierCounts: number[]; paidShares: number };
 };
 
-const Ctx = createContext<Game | null>(null);
+export const GameCtx = createContext<Game | null>(null);
+const Ctx = GameCtx;
 export const useGame = () => {
   const g = useContext(Ctx);
   if (!g) throw new Error("GameProvider missing");

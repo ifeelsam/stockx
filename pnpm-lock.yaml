@@ -199,6 +199,12 @@ importers:
       '@scratchers/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@solana/spl-token':
+        specifier: ^0.4.15
+        version: 0.4.15(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@5.9.3))(bufferutil@4.2.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)
+      '@solana/web3.js':
+        specifier: ^1.98.0
+        version: 1.99.0(bufferutil@4.2.0)(typescript@5.9.3)
     devDependencies:
       '@types/react':
         specifier: ^19.0.0

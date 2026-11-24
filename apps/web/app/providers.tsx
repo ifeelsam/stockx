@@ -3,7 +3,7 @@ import { Buffer } from "buffer";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import type { ReactNode } from "react";
-import { GameProvider } from "@scratchers/app-core";
+import { GameHost } from "@/components/GameHost";
 
 // web3.js / anchor expect a global Buffer in the browser
 if (typeof globalThis !== "undefined" && !(globalThis as { Buffer?: unknown }).Buffer) (globalThis as { Buffer?: unknown }).Buffer = Buffer;
@@ -11,8 +11,7 @@ if (typeof globalThis !== "undefined" && !(globalThis as { Buffer?: unknown }).B
 const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
 export function Providers({ children }: { children: ReactNode }) {
-  const game = <GameProvider>{children}</GameProvider>;
-  if (!appId) return game;
+  if (!appId) return <GameHost privy={false}>{children}</GameHost>;
   return (
     <PrivyProvider
       appId={appId}
@@ -23,7 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
         externalWallets: { solana: { connectors: toSolanaWalletConnectors() } },
       }}
     >
-      {game}
+      <GameHost privy>{children}</GameHost>
     </PrivyProvider>
   );
 }

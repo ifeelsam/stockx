@@ -5,14 +5,29 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo 'covered by app tests'"
   },
-  "dependencies": { "@scratchers/sdk": "workspace:*" },
-  "peerDependencies": { "react": "*" },
-  "devDependencies": { "@types/react": "^19.0.0", "react": "19.3.1", "typescript": "^5.9.0" }
+  "dependencies": {
+    "@scratchers/sdk": "workspace:*",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/spl-token": "^0.4.15"
+  },
+  "peerDependencies": {
+    "react": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.3.1",
+    "typescript": "^5.9.0"
+  }
 }

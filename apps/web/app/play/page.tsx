@@ -35,6 +35,18 @@ export default function Play() {
 
   return (
     <div className="space-y-8">
+      {g.setup && g.setup.status !== "ready" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 p-4">
+          <div className="flex-1 text-sm">
+            <div className="font-semibold text-gold">Set up your account</div>
+            <div className="text-dim">One-time: create your player, delegate it to the rollup, start a play session{g.setup.step ? ` (next: ${g.setup.step})` : ""}.</div>
+            {g.setup.error && <div className="mt-1 text-danger">{g.setup.error}</div>}
+          </div>
+          <button onClick={() => run(g.setup!.run)} disabled={busy || g.setup.status === "checking"} className="rounded-xl bg-gold px-5 py-2.5 font-bold text-ink disabled:opacity-40">
+            {busy ? "Working…" : "Set up"}
+          </button>
+        </div>
+      )}
       <SeriesPicker value={sid} onChange={setSid} />
 
       <div className="flex flex-wrap items-center gap-3">

@@ -12,7 +12,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   configPda, connect, createSeriesIx, DEFAULT_TIERS, delegateFeedIx, delegateVaultIx, feedPda, freezeSeriesIx, getProgram, initConfigIx,
-  initFeedIx, initSellQuoteIx, initStatsIx, delegateStatsIx, statsPda, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
+  createTreasuryIx, treasuryUsdc, initFeedIx, initSellQuoteIx, initStatsIx, delegateStatsIx, statsPda, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
 } from "@scratchers/sdk";
 import { exists, hex, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
@@ -114,7 +114,10 @@ async function main() {
     feeds: Object.fromEntries(Object.entries(STOCKS).map(([k, v]) => [k, { id: Buffer.from(v.feedId).toString("hex"), pda: feedPda(v.feedId).toBase58() }])),
     series: SERIES.map((s) => ({ id: s.id, stock: s.sym, demo: s.demo, pda: seriesPda(s.id).toBase58(), vault: vaultPda(mints[s.sym]).toBase58() })),
   };
-  writeFileSync(process.env.DEPLOYMENTS_OUT ?? join(import.meta.dirname, "../../deployments/devnet.json"), JSON.stringify(out, null, 2) + "\n");
+  const json = JSON.stringify(out, null, 2) + "\n";
+  writeFileSync(process.env.DEPLOYMENTS_OUT ?? join(import.meta.dirname, "../../deployments/devnet.json"), json);
+  // public, non-secret: the web app (chain mode) and mobile read the same addresses
+  if (!process.env.DEPLOYMENTS_OUT) writeFileSync(join(import.meta.dirname, "../../apps/web/public/deployments.json"), json);
 
   if (process.env.SKIP_DELEGATE) return console.log("SKIP_DELEGATE set: base-layer setup done.");
 
@@ -137,6 +140,8 @@ async function main() {
     if (v && v.availableSharesMirror.gtn(0)) continue; // already synced
     await send(c.rollup, [await syncInventoryIx(program, admin.publicKey, mints[sym], VAULT_SHARES)], [admin], `sync_inventory ${sym}`);
   }
+  // USDC treasury: a Magic ATA owned by the Config PDA, created on the rollup so deposit_usdc has a destination.
+  if (!(await exists(c.rollup, treasuryUsdc(mints.mUSDC)))) await send(c.rollup, [createTreasuryIx(admin.publicKey, mints.mUSDC)], [admin], "create treasury (Magic ATA)");
   console.log("devnet setup complete → deployments/devnet.json");
 }
 
