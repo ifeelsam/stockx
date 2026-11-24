@@ -1,0 +1,58 @@
+{
+  "network": "devnet",
+  "rpc": "https://api.devnet.solana.com",
+  "program": "EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn",
+  "admin": "Bo7dijSQzznSVmdy7jY622xrUdekfZgQyJU2dFcNbNvT",
+  "keeper": "C9fPeTbAdh12kD5Q9a8FqNanrKY6a37KYhCFdPdup4iU",
+  "validator": "MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57",
+  "mints": {
+    "mUSDC": "9FKPu3coMVKAceTG6frd189EjuquMxcAqP1KiMcFF1vx",
+    "mTSLA": "7m6sa8bEh4mg5ZsMg2qmhFzVfz3HKvYCisdwTg5QwjkL",
+    "mNVDA": "5xrduMo5ahCkQpzSmj14ikKFEy4EDhFQf8xqPaFCtfA7",
+    "mSOL": "BbRnZQvrgT9R71VGJnscXktNHpe94buwGJFHLfaPLCHw"
+  },
+  "feeds": {
+    "mTSLA": {
+      "id": "16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1",
+      "pda": "AD6PWeY3Bn67L5HhNyiYhm1oJ5AWSgAzw8YpYyUbnBm2"
+    },
+    "mNVDA": {
+      "id": "b1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593",
+      "pda": "59wPpaeNrAaXft5pHHExXwRtNjUXS9qFynYVaBvhdSbZ"
+    },
+    "mSOL": {
+      "id": "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
+      "pda": "32ESxgu1VNkzm9WwBfkvfUksh9Aiq3qJ69EtenZcBVaF"
+    }
+  },
+  "series": [
+    {
+      "id": 1,
+      "stock": "mTSLA",
+      "demo": false,
+      "pda": "5PhJnzPoVhJUz9VUBHLEkmMYYV1JQKxqQNx8NvVC6s76",
+      "vault": "D8EAdGr2ytkuB6M8wES6AeKmN7t8Tb5nWtnJkWCjMB7Q"
+    },
+    {
+      "id": 2,
+      "stock": "mNVDA",
+      "demo": false,
+      "pda": "G6FPbX4FKDPG8Z4hsXDP5xT6S7C6s2NRUbxaKRt95bYc",
+      "vault": "4FVr7y8U2gJ5RZCDAci8nPQwboKJrxUBW3GUv1pW22yn"
+    },
+    {
+      "id": 3,
+      "stock": "mSOL",
+      "demo": false,
+      "pda": "5obgf7xCiUfFJxqBrctLUEBcXTAG2uYLt9zR5SHAMZwv",
+      "vault": "FzVmDMLXNGGfrepS5pwfqQLfrBrW4GMu5FvKf9jZ9Wfx"
+    },
+    {
+      "id": 4,
+      "stock": "mTSLA",
+      "demo": true,
+      "pda": "D34y11GgwXba4j2HdSu18KE7MBZJ2MvoeXhyD83M331R",
+      "vault": "D8EAdGr2ytkuB6M8wES6AeKmN7t8Tb5nWtnJkWCjMB7Q"
+    }
+  ]
+}
