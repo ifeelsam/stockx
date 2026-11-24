@@ -5,18 +5,30 @@ import { loadConfig } from "./config.js";
 import { makeFaucet } from "./faucet.js";
 import { startInventory, vaultHealth } from "./inventory.js";
 import { log } from "./log.js";
-import { DevSource, HermesSource } from "./prices.js";
+import { DevSource, HermesSource, PythProSource } from "./prices.js";
 import { lastPush, startPusher } from "./pusher.js";
 import { startQuotes } from "./quotes.js";
 import { startRepair } from "./repair.runtime.js";
 
+// An RPC hiccup (429 on a public endpoint, a dropped websocket) must never take the price relay down.
+process.on("unhandledRejection", (e) => log("error", "unhandled rejection", { err: (e as Error)?.message ?? String(e) }));
+process.on("uncaughtException", (e) => log("error", "uncaught exception", { err: e.message }));
+
 const cfg = loadConfig();
+function priceSource(c: typeof cfg) {
+  if (c.priceSource === "dev") return new DevSource();
+  if (c.priceSource === "pythpro") {
+    if (!c.pythProToken) throw new Error("PRICE_SOURCE=pythpro needs PYTH_PRO_TOKEN");
+    return new PythProSource(c.pythProToken, c.pythProIds, c.pythProUrl);
+  }
+  return new HermesSource(c.hermesUrl, c.hermesAuthHeader);
+}
 const c = connect({ baseUrl: cfg.rpcUrl, region: cfg.region });
 const program = getProgram(c.base);
 const feeds = Object.entries(cfg.deployments.feeds).map(([name, f]) => ({ name, idHex: f.id }));
 const stales = new Map<string, number>(); // feed → age in seconds (watcher)
 
-startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: cfg.priceSource === "dev" ? new DevSource() : new HermesSource(cfg.hermesUrl, cfg.hermesAuthHeader) });
+startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: priceSource(cfg) });
 startRepair({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments, graceMs: cfg.repairGraceMs });
 startInventory({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, mintAuthority: cfg.faucet, deployments: cfg.deployments, refill: cfg.refillStock });
 startQuotes({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments });

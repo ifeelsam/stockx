@@ -3,6 +3,7 @@ import { ackSoldIx, fetchSellQuote, setSellQuoteIx, syncInventoryIx, type Scratc
 import type { Deployments } from "./config.js";
 import { log } from "./log.js";
 import { sendIx } from "./tx.js";
+import { planWalk } from "./prices.js";
 
 const MAX_FEED_AGE_S = 30;
 
@@ -33,7 +34,12 @@ export function startQuotes(o: { program: ScratchersProgram; base: Connection; r
         const feed = program.coder.accounts.decode("priceFeed", info.data);
         const f = { price: BigInt(feed.price.toString()), publishTs: feed.publishTs.toNumber() };
         if (planQuote(f, quote, Math.floor(Date.now() / 1000)) === "post") {
-          await sendIx(base, keeper, [await setSellQuoteIx(program, keeper.publicKey, mint, f.price, f.publishTs)]);
+          // set_sell_quote bands moves at 10%: walk there in steps (intermediate steps carry older timestamps)
+          const steps = planWalk(quote.priceE8, f.price, 900);
+          for (let i = 0; i < steps.length; i++) {
+            const last = i === steps.length - 1;
+            await sendIx(base, keeper, [await setSellQuoteIx(program, keeper.publicKey, mint, steps[i], last ? f.publishTs : quote.ts + 1 + i)]);
+          }
         }
         const unsynced = quote.totalSoldShares - quote.syncedSoldShares;
         if (unsynced > 0n) {

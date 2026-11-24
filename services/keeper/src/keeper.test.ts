@@ -62,3 +62,12 @@ test("quotes follow fresh feed readings only", () => {
   assert.equal(planQuote({ price: 5n, publishTs: 1_010 }, q, 1_100), "skip", "feed stale: market closed, let the quote expire");
   assert.equal(planQuote({ price: 0n, publishTs: 1_010 }, q, 1_020), "skip");
 });
+
+import { parseProRow } from "./prices.js";
+test("pyth pro rows convert to feed units (-8) and seconds", () => {
+  // TSLA live row: price 38313692 @ exp -5 → $383.13692; publish_time in µs
+  const q = parseProRow("mTSLA", { price: 38313692, confidence: 11392, exponent: -5, publish_time: 1795541224000000 });
+  assert.deepEqual([q.price, q.conf, q.publishTs], [38313692000n, 11392000n, 1795541224]);
+  // SOL already at -8: unchanged
+  assert.equal(parseProRow("mSOL", { price: 6922218555, exponent: -8, publish_time: 1_000_000 }).price, 6922218555n);
+});

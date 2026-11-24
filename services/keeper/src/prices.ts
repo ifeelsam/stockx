@@ -41,6 +41,44 @@ export class HermesSource implements PriceSource {
   }
 }
 
+type ProRow = { price: number | string; confidence?: number | string; exponent: number; publish_time: number };
+
+/** One Pyth Pro (Lazer) price row → keeper quote in feed units (-8). `publish_time` is microseconds. */
+export function parseProRow(feed: string, r: ProRow): Quote {
+  const u = toFeedUnits(String(r.price), String(r.confidence ?? 0), r.exponent);
+  return { feed, price: u.price, conf: u.conf, publishTs: Math.floor(r.publish_time / 1_000_000) };
+}
+
+/**
+ * Pyth Pro (Lazer) REST: GET {url}/v1/fixed_rate@1000ms/price?ids=<id>&timestamp=<µs aligned to 1 s>, bearer token.
+ * Requests must be aligned to a whole second (unaligned timestamps return `[]`). The token's grant decides which
+ * feeds work: a 403 "Not entitled" feed is skipped (logged once) and its series stays paused.
+ */
+export class PythProSource implements PriceSource {
+  readonly name = "pyth-pro";
+  private lastSec = new Map<string, number>();
+  private warned = new Set<string>();
+  constructor(private token: string, private ids: Record<string, number>, private url = "https://pyth.dourolabs.app", private lagS = 2) {}
+  async fetch(feeds: Record<string, string>): Promise<Quote[]> {
+    const sec = Math.floor(Date.now() / 1000) - this.lagS;
+    const out: Quote[] = [];
+    for (const feed of Object.keys(feeds)) {
+      const id = this.ids[feed];
+      if (!id || this.lastSec.get(feed) === sec) continue; // at most one request per feed per second
+      this.lastSec.set(feed, sec);
+      const res = await fetch(`${this.url}/v1/fixed_rate@1000ms/price?ids=${id}&timestamp=${sec * 1_000_000}`, { headers: { authorization: `Bearer ${this.token}` } });
+      if (res.status === 403) {
+        if (!this.warned.has(feed)) { this.warned.add(feed); log("warn", "pyth pro: feed not entitled, series stays paused", { feed, id }); }
+        continue;
+      }
+      if (!res.ok) throw new Error(`pyth pro ${res.status}`);
+      const rows = (await res.json()) as ProRow[];
+      if (rows[0]) out.push(parseProRow(feed, rows[0])); // [] = no data for that second (market closed)
+    }
+    return out;
+  }
+}
+
 /** Random walk around a base price. Devnet only, clearly logged; never a substitute for real prices. */
 export class DevSource implements PriceSource {
   readonly name = "dev-random-walk";

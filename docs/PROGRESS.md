@@ -8,7 +8,7 @@
 
 Bugs only devnet could find (all fixed): treasury shared an address with the base-layer sell pool, so the rollup held a read-only clone (`deposit_usdc` → "Account is immutable"); `setup:devnet` re-synced inventory on every run (it read the delegated vault from the base layer), double-counting the mirror; `fetchPlayer` connection override. Public RPC rate limits (429) make `setup` slow but it is idempotent.
 
-Still unverified: keeper price relay against real Hermes (running on synthetic prices), dropped-Magic-Action repair path, commit-limit/fee-vault behaviour, Privy login, Seeker/MWA signing, the chain-backend UI in a browser/phone.
+Keeper now relays real Pyth Pro prices (TSLA, SOL) to the rollup and posts sell quotes. Still unverified: dropped-Magic-Action repair path, commit-limit/fee-vault behaviour, Privy login, Seeker/MWA signing, the chain-backend UI in a browser/phone.
 
 ## Status (2026-11-24, session 1)
 
@@ -35,7 +35,8 @@ Still unverified: keeper price relay against real Hermes (running on synthetic p
 
 ## Blocked / needs owner
 - **Devnet SOL for the deployer** (~6 SOL: program deploy ≈ 4 + setup). Airdrop endpoints are rate-limited. Deployer address: `solana address -k ~/.config/stockx/deployer.json`; fund at https://faucet.solana.com. Then: deploy, run setup, start keeper, and verify on devnet: delegation, VRF callbacks, a real Magic Action (dropped-action behaviour), Magic ATA treasury creation.
-- **Hermes price access**: `hermes.pyth.network` price endpoints return 401. Need an authenticated Hermes-compatible endpoint/key (`HERMES_AUTH_HEADER`), or approve using the dev random-walk for the demo. Also send `docs/TELEGRAM_DRAFT.md` to MagicBlock (TSLA/NVDA on the rollup oracle).
+- **NVDA price**: the Pyth Pro token works for TSLA and SOL but is not entitled to NVDA (feed 1314). Ask Pyth to extend the grant, or the mNVDA series stays paused.
+- ~~Hermes price access~~ resolved via Pyth Pro (see DECISIONS). Old note: **Hermes price access**: `hermes.pyth.network` price endpoints return 401. Need an authenticated Hermes-compatible endpoint/key (`HERMES_AUTH_HEADER`), or approve using the dev random-walk for the demo. Also send `docs/TELEGRAM_DRAFT.md` to MagicBlock (TSLA/NVDA on the rollup oracle).
 - ~~Privy app ID~~ received (web `.env.local`, mobile `.env.local`). **Mobile also needs a Privy *client ID*** (Privy dashboard → Clients → new client for Expo; add Android package `app.stockscratchers` and scheme `stockscratchers`) in `EXPO_PUBLIC_PRIVY_CLIENT_ID`. Also still need: Android emulator/device for the mobile Seeker/Privy risk test. Privy login itself is untested in a real browser session (needs an interactive login; allowed origins must include localhost / the deploy URL in the Privy dashboard).
 
 ## Verification gaps (honest list)

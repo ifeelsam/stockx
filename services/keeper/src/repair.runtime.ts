@@ -15,6 +15,8 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
   const { program, base, rollup, keeper, deployments, graceMs } = o;
   const watched = new Set<string>(); // Player PDAs with unsettled claims
   const firstSeen = new Map<string, Map<bigint, number>>();
+  // The sweep reads the committed base snapshot, which lags the rollup: remember what we already settled there.
+  const settledHere = new Set<string>();
   const mintBySeries = new Map(deployments.series.map((s) => [s.id, new PublicKey(deployments.mints[s.stock])]));
   const parser = new EventParser(PROGRAM_ID, program.coder);
 
@@ -35,7 +37,7 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
         const info = await base.getAccountInfo(new PublicKey(key), "confirmed"); // committed snapshot
         if (!info) { watched.delete(key); continue; }
         const player = program.coder.accounts.decode("player", info.data);
-        const cards = (player.cards as any[]).filter((c) => c.state === CardState.ClaimRequested);
+        const cards = (player.cards as any[]).filter((c) => c.state === CardState.ClaimRequested && !settledHere.has(`${key}:${c.id}`));
         if (cards.length === 0) { watched.delete(key); firstSeen.delete(key); continue; }
         const payouts = await base.getMultipleAccountsInfo(cards.map((c) => payoutPda(new PublicKey(key), BigInt(c.id.toString()))));
         const lite: CardLite[] = cards.map((c, i) => ({ id: BigInt(c.id.toString()), state: c.state, seriesId: c.series, paidOut: payouts[i] !== null }));
@@ -47,8 +49,14 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
             const sig = await sendIx(base, keeper, [await payOutIx(program, keeper.publicKey, player.authority, a.seriesId, mint, a.cardId)]);
             log("info", "pay_out repaired", { player: key, card: a.cardId.toString(), sig });
           } else {
-            const sig = await sendIx(rollup, keeper, [await markSettledIx(program, player.authority, a.cardId)]);
-            log("info", "slot settled", { player: key, card: a.cardId.toString(), sig });
+            try {
+              const sig = await sendIx(rollup, keeper, [await markSettledIx(program, player.authority, a.cardId)]);
+              log("info", "slot settled", { player: key, card: a.cardId.toString(), sig });
+            } catch (e) {
+              // 0x177f = BadState: the rollup copy is already Settled (our base snapshot is just stale)
+              if (!/0x177f/.test((e as Error).message)) throw e;
+            }
+            settledHere.add(`${key}:${a.cardId}`);
           }
         }
       } catch (e) {

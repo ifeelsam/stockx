@@ -22,9 +22,10 @@ export function startPusher(o: { program: ScratchersProgram; rollup: Connection;
         const prev = lastPush.get(q.feed);
         if (prev && q.publishTs <= prev.publishTs) continue; // nothing new (market closed / same tick)
         const id = Uint8Array.from(Buffer.from(idByName[q.feed], "hex"));
-        const onChain = prev?.price ?? (await readOnChain(program, rollup, id));
-        const steps = planWalk(onChain, q.price, maxMove);
-        let ts = Math.max((prev?.publishTs ?? 0) + 1, 1);
+        // after a restart `prev` is unknown: continue from the on-chain price AND timestamp (push_price needs a strictly newer ts)
+        const chain = prev ? { price: prev.price, ts: prev.publishTs } : await readOnChain(program, rollup, id);
+        const steps = planWalk(chain.price, q.price, maxMove);
+        let ts = Math.max(chain.ts + 1, 1);
         for (let i = 0; i < steps.length; i++) {
           const last = i === steps.length - 1;
           // Intermediate steps carry a stale ts so buys stay paused until the fresh final step lands.
@@ -47,10 +48,10 @@ export function startPusher(o: { program: ScratchersProgram; rollup: Connection;
   return () => { stopped = true; };
 }
 
-async function readOnChain(program: ScratchersProgram, rollup: Connection, id: Uint8Array): Promise<bigint> {
+async function readOnChain(program: ScratchersProgram, rollup: Connection, id: Uint8Array): Promise<{ price: bigint; ts: number }> {
   const info = await rollup.getAccountInfo(feedPda(id), "confirmed");
-  if (!info) return 0n;
+  if (!info) return { price: 0n, ts: 0 };
   const f = program.coder.accounts.decode("priceFeed", info.data);
-  return BigInt(f.price.toString());
+  return { price: BigInt(f.price.toString()), ts: f.publishTs.toNumber() };
 }
 export { PublicKey };
