@@ -174,3 +174,16 @@ test("sell() refuses the Payments API on devnet; paymentsSwapTx wires quote → 
   await assert.rejects(paymentsSwapTx({ baseUrl: "https://x", userPublicKey: user, inputMint: mint, outputMint: usdc, amount: 1n, slippageBps: 100, fetchImpl: fake }), /swap build failed: 500/);
   assert.deepEqual(calls, ["/v1/swap/quote", "/v1/swap/swap"]);
 });
+
+import { degradedServices } from "./status.js";
+test("degradedServices flags only Down required services in our region", () => {
+  const j = { environments: { devnet: { regions: {
+    asia: { servers: { a: { live_status: { er: true, rpc_router: true, pricing_oracle: false, vrf_oracle: false } } } },
+    usa: { servers: { u: { live_status: { er: false, rpc_router: true } } } },
+    tee: { servers: { t: { live_status: { er: true } } } },
+  } } } };
+  assert.deepEqual(degradedServices(j, "devnet", "asia"), ["VRF randomness"], "pricing oracle ignored (own feed); N/A is not Down");
+  assert.deepEqual(degradedServices(j, "devnet", "usa"), ["Ephemeral Rollup"]);
+  assert.deepEqual(degradedServices(j, "devnet", "tee"), []);
+  assert.deepEqual(degradedServices({}, "devnet", "asia"), []);
+});

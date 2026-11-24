@@ -10,7 +10,7 @@ export function Banners() {
   const pending = g.cards.filter((c) => c.state === "pending").length;
   const settling = g.cards.filter((c) => c.state === "claiming").length;
   const list: B[] = [];
-  if (g.degraded) list.push({ key: "deg", tone: "bad", text: "MagicBlock is degraded. Plays may be slow or paused." });
+  if (g.degraded.length) list.push({ key: "deg", tone: "bad", text: `MagicBlock degraded (${g.degraded.join(", ")}). Plays may be slow or paused.` });
   if (g.marketClosed) list.push({ key: "mkt", tone: "warn", text: "US market closed: TSLA / NVDA price paused. Try the always-on SOL series." });
   if (pending) list.push({ key: "vrf", tone: "info", text: `Randomness pending for ${pending} card${pending > 1 ? "s" : ""}…` });
   if (settling) list.push({ key: "set", tone: "info", text: `Settling ${settling} payout${settling > 1 ? "s" : ""} on Solana…` });

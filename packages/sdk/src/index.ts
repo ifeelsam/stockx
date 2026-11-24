@@ -9,4 +9,5 @@ export * from "./program.js";
 export * from "./instructions.js";
 export * from "./accounts.js";
 export * from "./sell.js";
+export * from "./status.js";
 export type { Scratchers } from "./generated/scratchers.js";

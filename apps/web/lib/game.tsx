@@ -4,7 +4,7 @@
  * works before the devnet deploy; the chain backend (SDK) plugs in behind the same shape.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { cardArt, tierFor, sharesFor, type CardArt } from "@scratchers/sdk";
+import { cardArt, tierFor, sharesFor, fetchDegraded, type CardArt } from "@scratchers/sdk";
 import { SERIES, seriesById } from "./series";
 
 export type UiCardState = "pending" | "revealed" | "claiming" | "settled";
@@ -30,7 +30,8 @@ type Game = {
   history: Record<keyof Prices, { t: number; v: number }[]>;
   marketClosed: boolean;
   setMarketClosed(v: boolean): void;
-  degraded: boolean;
+  /** required MagicBlock services currently reported Down */
+  degraded: string[];
   cards: UiCard[];
   holdings: Holding[];
   buy(seriesId: number, n: number): Promise<number[]>;
@@ -65,9 +66,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [cards, setCards] = useState<UiCard[]>([]);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [stats, setStats] = useState({ sold: 0, tierCounts: Array(8).fill(0) as number[], paidShares: 0 });
+  const [degraded, setDegraded] = useState<string[]>([]);
   const nextId = useRef(1);
   const pricesRef = useRef(prices);
   pricesRef.current = prices;
+
+  // status-page poll; a failed poll is not an outage
+  useEffect(() => {
+    const poll = () => fetchDegraded("devnet", "asia").then(setDegraded, () => {});
+    poll();
+    const iv = setInterval(poll, 30_000);
+    return () => clearInterval(iv);
+  }, []);
 
   // random-walk ticker standing in for rollup price pushes
   useEffect(() => {
@@ -171,8 +181,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Game>(
-    () => ({ backend: "mock", usdc, prices, history, marketClosed, setMarketClosed, degraded: false, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats }),
-    [usdc, prices, history, marketClosed, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats],
+    () => ({ backend: "mock", usdc, prices, history, marketClosed, setMarketClosed, degraded, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats }),
+    [usdc, prices, history, marketClosed, degraded, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
