@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Stock Scratchers",
+    "slug": "stock-scratchers",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.stockscratchers"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0C10",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.stockscratchers"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-splash-screen"
+    ],
+    "scheme": "stockscratchers",
+    "backgroundColor": "#0A0C10",
+    "extra": {
+      "privyAppId": "",
+      "privyClientId": ""
+    }
+  }
+}
