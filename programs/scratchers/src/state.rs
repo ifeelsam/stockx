@@ -79,6 +79,9 @@ pub struct VaultState {
     pub usdc_in_e6: u64,
     pub reserved_shares: u64,
     pub available_shares_mirror: u64,
+    /// Path A only: last oracle price/time seen by `buy_card`, for the max-move band
+    pub last_oracle_price: u64,
+    pub last_oracle_ts: i64,
     pub bump: u8,
 }
 

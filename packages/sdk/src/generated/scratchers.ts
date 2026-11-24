@@ -4448,6 +4448,17 @@ export type Scratchers = {
             "type": "u64"
           },
           {
+            "name": "lastOraclePrice",
+            "docs": [
+              "Path A only: last oracle price/time seen by `buy_card`, for the max-move band"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lastOracleTs",
+            "type": "i64"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }

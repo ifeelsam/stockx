@@ -1,4 +1,4 @@
-use crate::{error::ScratchError, events::*, price::read_price, state::*};
+use crate::{error::ScratchError, events::*, price::{read_price, within_band, PriceSource}, state::*};
 use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 use ephemeral_rollups_sdk::anchor::{vrf, vrf_callback};
@@ -58,6 +58,15 @@ pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 
     let reserve_total = reserve.checked_mul(n as u64).ok_or(ScratchError::InsufficientInventory)?;
 
     let vault = &mut ctx.accounts.vault_state;
+    if s.price_source == PriceSource::MagicBlockOracle {
+        // The oracle reports no confidence (conf == 0), so bound the move against the last read instead.
+        require!(
+            within_band(vault.last_oracle_price, vault.last_oracle_ts, price.price, clock.unix_timestamp, s.max_move_bps),
+            ScratchError::PriceOutOfBand
+        );
+        vault.last_oracle_price = price.price;
+        vault.last_oracle_ts = clock.unix_timestamp;
+    }
     require!(
         vault.available_shares_mirror.saturating_sub(vault.reserved_shares) >= reserve_total,
         ScratchError::InsufficientInventory

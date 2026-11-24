@@ -114,6 +114,8 @@ pub fn init_vault(ctx: Context<InitVault>) -> Result<()> {
         usdc_in_e6: 0,
         reserved_shares: 0,
         available_shares_mirror: 0,
+        last_oracle_price: 0,
+        last_oracle_ts: 0,
         bump: ctx.bumps.vault_state,
     };
     Ok(())

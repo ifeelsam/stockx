@@ -902,3 +902,81 @@ fn ack_sold_only_moves_within_total_sold() {
     assert!(err.contains(&custom(ScratchError::BadState)), "cannot move backwards: {err}");
     assert_eq!(read::<SellQuote>(&e.svm, Base, &s.quote).synced_sold_shares, 3_000_000);
 }
+
+// ---- Path A: MagicBlock oracle ----
+
+const ORACLE_PROGRAM: Pubkey = Pubkey::from_str_const("PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd");
+
+/// An oracle account in the live layout (`PriceUpdateV3`): stored exponent +8 like every real feed.
+fn oracle_account(feed: &Pubkey, price: i64, publish_time: i64, owner: Pubkey) -> solana_account::Account {
+    let mut d = vec![0xea, 0xa1, 0x0e, 0x24, 0xac, 0xef, 0x0f, 0xe8];
+    d.extend_from_slice(&[0u8; 32]); // write_authority
+    d.push(1); // VerificationLevel::Full
+    d.extend_from_slice(feed.as_ref());
+    d.extend_from_slice(&price.to_le_bytes());
+    d.extend_from_slice(&0u64.to_le_bytes()); // conf: always 0 on the live oracle
+    d.extend_from_slice(&8i32.to_le_bytes()); // exponent: always +8 (wrong; the series carries the real one)
+    d.extend_from_slice(&publish_time.to_le_bytes());
+    d.extend_from_slice(&(publish_time - 1).to_le_bytes());
+    d.extend_from_slice(&price.to_le_bytes());
+    d.extend_from_slice(&0u64.to_le_bytes());
+    d.extend_from_slice(&1_000u64.to_le_bytes()); // posted_slot > 0
+    d.push(0); // trailing byte, as on the live account
+    solana_account::Account { lamports: 1_000_000_000, data: d, owner: addr(owner), executable: false, rent_epoch: 0 }
+}
+
+#[test]
+fn oracle_series_reads_live_layout_and_enforces_band_owner_and_freshness() {
+    let mut e = setup(20_000_000, 10_000_000_000, default_tiers());
+    let (a, oracle_feed) = (pk(&e.admin.pubkey()), Pubkey::new_unique());
+    let series2 = pda(&[b"series", &2u16.to_le_bytes()]);
+    let tiers = default_tiers();
+    let admin = e.admin.insecure_clone();
+    let create = ix(ix_data::CreateSeries { args: scratchers::instructions::CreateSeriesArgs {
+            id: 2, price_source: scratchers::price::PriceSource::MagicBlockOracle, feed: oracle_feed, feed_expo: -8,
+            ticket_usd_e6: 1_000_000, tiers, total_weight: tiers.iter().map(|t| t.weight).sum(),
+            demo: false, max_staleness_s: 60, max_move_bps: 500, max_conf_bps: 100, vrf_timeout_s: 120 } },
+        scratchers::accounts::CreateSeries { config: e.config, series: series2, stock_mint: e.mint, admin: a, system_program: system_program::ID });
+    send(&mut e.svm, Base, &[&admin], create, "create oracle series");
+    let freeze = ix(ix_data::FreezeSeries {}, scratchers::accounts::FreezeSeries { config: e.config, series: series2, admin: a });
+    send(&mut e.svm, Base, &[&admin], freeze, "freeze");
+    (e.series, e.feed) = (series2, oracle_feed);
+
+    let put = |e: &mut Env, price: i64, ts: i64, owner: Pubkey| {
+        // ER accounts use litesvm's own Account type: borrow one as a template and overwrite its fields
+        let (built, mut acc) = (oracle_account(&oracle_feed, price, ts, owner), e.svm.ephemeral().get_account(&addr(e.player)).unwrap());
+        (acc.data, acc.owner, acc.lamports, acc.executable) = (built.data, built.owner, built.lamports, false);
+        e.svm.ephemeral_mut().set_account(addr(oracle_feed), acc).unwrap();
+    };
+    let user = e.user.insecure_clone();
+    let vault_price = |e: &Env| read::<VaultState>(&e.svm, Ephemeral, &e.vault).last_oracle_price;
+
+    // 1. live layout + wrong stored exponent: $200.00 must come out as 200e8, and the baseline is recorded
+    put(&mut e, PRICE, NOW, ORACLE_PROGRAM);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy on oracle price");
+    assert_eq!(vault_price(&e), PRICE as u64);
+
+    // 2. band: +6% in one step is rejected, +4% accepted
+    set_time(&mut e.svm, NOW + 2);
+    put(&mut e, PRICE * 106 / 100, NOW + 2, ORACLE_PROGRAM);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceOutOfBand)), "{err}");
+    put(&mut e, PRICE * 104 / 100, NOW + 2, ORACLE_PROGRAM);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy within band");
+
+    // 3. owner must be the oracle program (a look-alike account of ours is not accepted)
+    put(&mut e, PRICE, NOW + 3, scratchers::ID);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::WrongFeed)), "{err}");
+
+    // 4. stale oracle data pauses sales
+    put(&mut e, PRICE, NOW + 2, ORACLE_PROGRAM);
+    set_time(&mut e.svm, NOW + 2 + 61);
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    let err = try_send(&mut e.svm, Ephemeral, &[&user], buy).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceStale)), "{err}");
+}
