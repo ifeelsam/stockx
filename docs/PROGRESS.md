@@ -11,8 +11,10 @@
 - Scripts: `pnpm --filter @scratchers/scripts setup:devnet` (idempotent; base half verified on a local validator).
 - Keeper (`services/keeper`): price pusher (Hermes/dev, band-safe walk), payout repair, inventory refill, staleness watcher, `/metrics`, faucet. Faucet smoke-tested locally.
 
+- Web (`apps/web`, Next 16 + Privy + Tailwind 4): landing, /play (series picker, buy 1/10, pack fan-out, canvas scratch, claim all, jackpot overlay), /portfolio (live lightweight-charts, P/L, sell), /prizes, /verify, /dashboard, status banners. Runs on a **mock backend** (in-browser simulation); typechecks, builds, and a headless-Chromium run of buy 10 → scratch → claim → portfolio passes. `packages/ui-tokens` shared tokens.
+
 **Not started**
-- Web app (`apps/web`), mobile app (`apps/mobile`), `packages/ui-tokens`, `packages/animations`, Rive/Lottie assets.
+- Web app on the chain backend (mock backend done), mobile app (`apps/mobile`), `packages/animations`, Rive asset.
 - Program: Path A oracle read, `Stats` account, `sell_to_vault` + SDK `sell()`, commit-limit/fee-vault test, SDK `delegateSpl` wrapper for USDC onboarding.
 - Status-page poller + degraded banner (SDK helper).
 
@@ -20,7 +22,7 @@
 - **Submission deadline** (not visible on build.magicblock.app; needed for the code-freeze time).
 - **Devnet SOL for the deployer** (~6 SOL: program deploy ≈ 4 + setup). Airdrop endpoints are rate-limited. Deployer address: `solana address -k ~/.config/stockx/deployer.json`; fund at https://faucet.solana.com. Then: deploy, run setup, start keeper, and verify on devnet: delegation, VRF callbacks, a real Magic Action (dropped-action behaviour), Magic ATA treasury creation.
 - **Hermes price access**: `hermes.pyth.network` price endpoints return 401. Need an authenticated Hermes-compatible endpoint/key (`HERMES_AUTH_HEADER`), or approve using the dev random-walk for the demo. Also send `docs/TELEGRAM_DRAFT.md` to MagicBlock (TSLA/NVDA on the rollup oracle).
-- **Privy app ID/secret** (web + mobile login), then the mobile Seeker/Privy risk test (Android emulator or device).
+- ~~Privy app ID~~ received (web `.env.local`). Still need: Android emulator/device for the mobile Seeker/Privy risk test. Privy login itself is untested in a real browser session (needs an interactive login; allowed origins must include localhost / the deploy URL in the Privy dashboard).
 
 ## Verification gaps (honest list)
 - Nothing has run on devnet yet. MagicSVM models the delegation program, VRF, commits and Magic Actions, but not the router, real VRF oracle, commit limits/fees, or the real committor's drop-the-action behaviour.

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0a0c10;
+  --color-surface: #12151c;
+  --color-surface-hi: #1a1e28;
+  --color-line: #262b38;
+  --color-text: #f2f4f8;
+  --color-dim: #8b93a7;
+  --color-money: #19e39a;
+  --color-gold: #f5c451;
+  --color-danger: #ff5d6c;
+  --color-warn: #ffb547;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html, body { background: var(--color-ink); color: var(--color-text); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+
+@keyframes shimmer { 0% { background-position: -300px 0 } 100% { background-position: 300px 0 } }
+.shimmer {
+  background: linear-gradient(90deg, #1a1e28 0%, #2a3040 50%, #1a1e28 100%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shake { 10%,90% { transform: translate3d(-2px,0,0) } 20%,80% { transform: translate3d(4px,0,0) } 30%,50%,70% { transform: translate3d(-6px,0,0) } 40%,60% { transform: translate3d(6px,0,0) } }
+.shake { animation: shake 0.42s cubic-bezier(.36,.07,.19,.97) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer, .shake { animation: none; }
+}

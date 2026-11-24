@@ -34,14 +34,14 @@ export type TierStyle = {
 };
 
 export const TIERS: Record<TierKey, TierStyle> = {
-  lose: { key: "lose", label: "No win", color: "#5B6377", glow: "#2A2F3D", symbol: "dust", fx: "none" },
+  lose: { key: "lose", label: "No win", color: "#5B6377", glow: "#2A2F3D", symbol: "leaf", fx: "none" },
   x1: { key: "x1", label: "Money back", color: "#7FD6B2", glow: "#19E39A", symbol: "coin", fx: "glow" },
   x2: { key: "x2", label: "Double", color: "#4FD1E8", glow: "#22B8D6", symbol: "bolt", fx: "burst" },
   x5: { key: "x5", label: "5x", color: "#6C8CFF", glow: "#4A6BFF", symbol: "star", fx: "burst" },
   x10: { key: "x10", label: "10x", color: "#A67CFF", glow: "#8A52FF", symbol: "gem", fx: "burst" },
   x50: { key: "x50", label: "50x", color: "#FF7AD1", glow: "#FF3DB8", symbol: "crown", fx: "shake" },
-  x100: { key: "x100", label: "100x", color: "#FF9A4D", glow: "#FF7A1A", symbol: "flame", fx: "shake" },
-  jackpot: { key: "jackpot", label: "JACKPOT 1000x", color: "#F5C451", glow: "#FFD76A", symbol: "sun", fx: "jackpot" },
+  x100: { key: "x100", label: "100x", color: "#FF9A4D", glow: "#FF7A1A", symbol: "rocket", fx: "shake" },
+  jackpot: { key: "jackpot", label: "JACKPOT 1000x", color: "#F5C451", glow: "#FFD76A", symbol: "bull", fx: "jackpot" },
 };
 
 export const tierByIndex = (i: number): TierStyle => TIERS[TIER_KEYS[i] ?? "lose"];
