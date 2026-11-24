@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { rtp, totalWeight } from "@scratchers/sdk";
 import { tierByIndex } from "@scratchers/ui-tokens";
-import { SERIES, TIER_NAMES } from "@/lib/series";
+import { SERIES, TIER_NAMES } from "@scratchers/app-core";
 
 export default function Prizes() {
   const [sid, setSid] = useState(1);

@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { easing, timing, tierByMultiplier } from "@scratchers/ui-tokens";
-import { useGame, isEquity } from "@/lib/game";
-import { seriesById } from "@/lib/series";
+import { useGame, isEquity } from "@scratchers/app-core";
+import { seriesById } from "@scratchers/app-core";
 import { SeriesPicker } from "@/components/SeriesPicker";
 import { ScratchCard } from "@/components/ScratchCard";
 import { JackpotOverlay } from "@/components/JackpotOverlay";

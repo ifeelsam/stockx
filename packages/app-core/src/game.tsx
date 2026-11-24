@@ -4,8 +4,8 @@
  * works before the devnet deploy; the chain backend (SDK) plugs in behind the same shape.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { cardArt, tierFor, sharesFor, fetchDegraded, type CardArt } from "@scratchers/sdk";
-import { SERIES, seriesById } from "./series";
+import { cardArt, tierFor, sharesFor, fetchDegraded, type CardArt } from "@scratchers/sdk/pure";
+import { SERIES, seriesById } from "./series.js";
 
 export type UiCardState = "pending" | "revealed" | "claiming" | "settled";
 export type UiCard = {

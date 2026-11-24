@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, motion } from "motion/react";
-import { useGame } from "@/lib/game";
+import { useGame } from "@scratchers/app-core";
 
 type B = { key: string; tone: "info" | "warn" | "bad"; text: string };
 

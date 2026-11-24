@@ -1,4 +1,4 @@
-import { DEFAULT_TIERS, type Tier } from "@scratchers/sdk";
+import { DEFAULT_TIERS, type Tier } from "@scratchers/sdk/pure";
 
 export type SeriesInfo = {
   id: number;

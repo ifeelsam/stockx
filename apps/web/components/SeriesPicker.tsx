@@ -1,6 +1,6 @@
 "use client";
-import { SERIES, type SeriesInfo } from "@/lib/series";
-import { useGame, isEquity } from "@/lib/game";
+import { SERIES, type SeriesInfo } from "@scratchers/app-core";
+import { useGame, isEquity } from "@scratchers/app-core";
 import { Symbol } from "./Symbol";
 
 export function SeriesPicker({ value, onChange }: { value: number; onChange: (id: number) => void }) {

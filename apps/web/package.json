@@ -13,6 +13,7 @@
   "dependencies": {
     "@privy-io/react-auth": "3.52.1",
     "@rive-app/react-canvas": "4.41.0",
+    "@scratchers/app-core": "workspace:*",
     "@scratchers/sdk": "workspace:*",
     "@scratchers/ui-tokens": "workspace:*",
     "@solana-program/memo": "^0.16.0",

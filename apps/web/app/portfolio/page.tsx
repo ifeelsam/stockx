@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useGame } from "@/lib/game";
+import { useGame } from "@scratchers/app-core";
 import { Sparkline } from "@/components/Sparkline";
 
 const usd = (n: number) => `${n < 0 ? "-" : ""}$${Math.abs(n).toFixed(2)}`;

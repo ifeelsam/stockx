@@ -1,8 +1,8 @@
 "use client";
 import { DEFAULT_TIERS, rtp, totalWeight } from "@scratchers/sdk";
 import { tierByIndex } from "@scratchers/ui-tokens";
-import { useGame } from "@/lib/game";
-import { TIER_NAMES } from "@/lib/series";
+import { useGame } from "@scratchers/app-core";
+import { TIER_NAMES } from "@scratchers/app-core";
 
 export default function Dashboard() {
   const g = useGame();

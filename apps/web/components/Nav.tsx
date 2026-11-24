@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useGame } from "@/lib/game";
+import { useGame } from "@scratchers/app-core";
 import { LoginButton } from "./LoginButton";
 
 const LINKS = [

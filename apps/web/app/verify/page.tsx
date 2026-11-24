@@ -2,8 +2,8 @@
 import { useMemo, useState } from "react";
 import { cardArt, tierFor } from "@scratchers/sdk";
 import { tierByMultiplier } from "@scratchers/ui-tokens";
-import { SERIES } from "@/lib/series";
-import { useGame } from "@/lib/game";
+import { SERIES } from "@scratchers/app-core";
+import { useGame } from "@scratchers/app-core";
 import { Symbol } from "@/components/Symbol";
 
 const hex = (s: string) => {
