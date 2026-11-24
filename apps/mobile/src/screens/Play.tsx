@@ -26,6 +26,14 @@ export function Play() {
   return (
     <View style={ui.screen}>
       <ScrollView contentContainerStyle={[ui.pad, { gap: 14, paddingBottom: 120 }]}>
+        {g.setup && g.setup.status !== "ready" && (
+          <View style={[ui.card, { borderColor: colors.gold + "66", backgroundColor: colors.gold + "14", gap: 8 }]}>
+            <Text style={{ color: colors.gold, fontWeight: "800" }}>Set up your account</Text>
+            <Text style={ui.dim}>One-time: create your player, delegate it to the rollup, start a play session{g.setup.step ? ` (next: ${g.setup.step})` : ""}.</Text>
+            {g.setup.error && <Text style={{ color: colors.danger }}>{g.setup.error}</Text>}
+            <Pressable disabled={busy || g.setup.status === "checking"} onPress={() => run(g.setup!.run)} style={[ui.btn, { backgroundColor: colors.gold, opacity: busy ? 0.4 : 1 }]}><Text style={ui.btnText}>{busy ? "Working…" : "Set up"}</Text></Pressable>
+          </View>
+        )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
           {SERIES.map((x) => {
             const on = x.id === sid;

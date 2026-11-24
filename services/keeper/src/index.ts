@@ -45,6 +45,7 @@ createServer(async (req, res) => {
   const send = (status: number, body: unknown, type = "application/json") => { res.writeHead(status, { "content-type": type, ...cors }); res.end(typeof body === "string" ? body : JSON.stringify(body)); };
   if (req.method === "OPTIONS") return send(204, "");
   if (req.url === "/healthz") return send(200, { ok: true, vaults: [...vaultHealth.keys()].map((k) => vaultPda(new PublicKey(cfg.deployments.mints[k])).toBase58()) });
+  if (req.url === "/deployments") return send(200, cfg.deployments); // public addresses only; apps bootstrap from here
   if (req.url === "/metrics") return send(200, metrics(), "text/plain");
   if (req.url === "/faucet" && req.method === "POST") {
     let raw = ""; for await (const ch of req) { raw += ch; if (raw.length > 1024) return send(413, { error: "too large" }); }

@@ -3,10 +3,11 @@ import { Pressable, StatusBar, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { PrivyProvider } from "@privy-io/expo";
-import { GameProvider, useGame } from "@scratchers/app-core";
+import { useGame } from "@scratchers/app-core";
 import { colors } from "@scratchers/ui-tokens";
 import { env } from "./src/env";
 import { WalletProvider, useWallet } from "./src/lib/wallets";
+import { GameHost } from "./src/lib/GameHost";
 import { Banners } from "./src/components/Banners";
 import { Login } from "./src/screens/Login";
 import { Play } from "./src/screens/Play";
@@ -46,9 +47,9 @@ function Shell() {
 function Tree() {
   return (
     <WalletProvider>
-      <GameProvider>
+      <GameHost>
         <Shell />
-      </GameProvider>
+      </GameHost>
     </WalletProvider>
   );
 }
