@@ -8,4 +8,5 @@ export * from "./price.js";
 export * from "./program.js";
 export * from "./instructions.js";
 export * from "./accounts.js";
+export * from "./sell.js";
 export type { Scratchers } from "./generated/scratchers.js";

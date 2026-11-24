@@ -12,7 +12,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   configPda, connect, createSeriesIx, DEFAULT_TIERS, delegateFeedIx, delegateVaultIx, feedPda, freezeSeriesIx, getProgram, initConfigIx,
-  initFeedIx, initVaultIx, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
+  initFeedIx, initSellQuoteIx, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
 } from "@scratchers/sdk";
 import { exists, hex, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
@@ -36,6 +36,7 @@ const SERIES: { id: number; sym: Sym; tiers: Tier[]; demo: boolean; label: strin
   { id: 4, sym: "mTSLA", tiers: DEMO_TIERS, demo: true, label: "TSLA DEMO ODDS" },
 ];
 const VAULT_SHARES = 100_000n * 1_000_000n; // 100k mock shares per stock
+const SELL_POOL_USDC = 1_000_000n * 1_000_000n; // 1M mUSDC the vault pays sellers from
 
 async function ensureMint(conn: Connection, payer: Keypair, name: string): Promise<PublicKey> {
   const mint = loadOrCreateKey(join(KEY_DIR, "mints", `${name}.json`));
@@ -92,6 +93,15 @@ async function main() {
       ], [admin], `fund_vault ${sym} +${top / 1_000_000n} shares`);
     }
   }
+
+  // Sell quotes (base layer) + the USDC pool the vault pays sellers from. ts=1 so the keeper's first
+  // quote is never band-limited and sells stay paused until a real price is posted.
+  for (const sym of Object.keys(STOCKS)) {
+    if (!(await exists(base, sellQuotePda(mints[sym])))) await send(base, [await initSellQuoteIx(program, admin.publicKey, mints[sym], mints.mUSDC, 100_000_000n, 1)], [admin], `init_sell_quote ${sym}`);
+  }
+  const pool = getAssociatedTokenAddressSync(mints.mUSDC, configPda(), true);
+  const poolBal = BigInt((await base.getTokenAccountBalance(pool).catch(() => null))?.value.amount ?? "0");
+  if (poolBal < SELL_POOL_USDC) await send(base, [createMintToInstruction(mints.mUSDC, pool, admin.publicKey, SELL_POOL_USDC - poolBal)], [admin], `fund sell pool +${(SELL_POOL_USDC - poolBal) / 1_000_000n} mUSDC`);
 
   const out = {
     network: "devnet", rpc: base.rpcEndpoint, program: program.programId.toBase58(), admin: admin.publicKey.toBase58(), keeper: keeper.publicKey.toBase58(),

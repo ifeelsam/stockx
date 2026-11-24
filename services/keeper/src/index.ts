@@ -7,6 +7,7 @@ import { startInventory, vaultHealth } from "./inventory.js";
 import { log } from "./log.js";
 import { DevSource, HermesSource } from "./prices.js";
 import { lastPush, startPusher } from "./pusher.js";
+import { startQuotes } from "./quotes.js";
 import { startRepair } from "./repair.runtime.js";
 
 const cfg = loadConfig();
@@ -18,6 +19,7 @@ const stales = new Map<string, number>(); // feed → age in seconds (watcher)
 startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: cfg.priceSource === "dev" ? new DevSource() : new HermesSource(cfg.hermesUrl, cfg.hermesAuthHeader) });
 startRepair({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments, graceMs: cfg.repairGraceMs });
 startInventory({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, mintAuthority: cfg.faucet, deployments: cfg.deployments, refill: cfg.refillStock });
+startQuotes({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments });
 const faucet = makeFaucet({ base: c.base, authority: cfg.faucet, deployments: cfg.deployments, cooldownMs: cfg.faucetCooldownMs });
 
 // Staleness watcher: age of each on-chain price; warn once a feed goes stale (market closed or relay down).

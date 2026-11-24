@@ -13,9 +13,11 @@
 
 - Web (`apps/web`, Next 16 + Privy + Tailwind 4): landing, /play (series picker, buy 1/10, pack fan-out, canvas scratch, claim all, jackpot overlay), /portfolio (live lightweight-charts, P/L, sell), /prizes, /verify, /dashboard, status banners. Runs on a **mock backend** (in-browser simulation); typechecks, builds, and a headless-Chromium run of buy 10 → scratch → claim → portfolio passes. `packages/ui-tokens` shared tokens.
 
+- Sell path: `sell_to_vault` / `set_sell_quote` / `ack_sold` + `SellQuote`; SDK `sell()` (devnet vault + Payments API behind a mainnet-only flag); keeper quote poster + inventory credit; setup script inits quotes and a 1M mUSDC sell pool. 20 MagicSVM tests; live-verified on a local validator (real SDK tx → 149.25 mUSDC for 1 share @ $150).
+
 **Not started**
 - Web app on the chain backend (mock backend done), mobile app (`apps/mobile`), `packages/animations`, Rive asset.
-- Program: Path A oracle read, `Stats` account, `sell_to_vault` + SDK `sell()`, commit-limit/fee-vault test, SDK `delegateSpl` wrapper for USDC onboarding.
+- Program: Path A oracle read, `Stats` account, commit-limit/fee-vault test, SDK `delegateSpl` wrapper for USDC onboarding.
 - Status-page poller + degraded banner (SDK helper).
 
 ## Blocked / needs owner

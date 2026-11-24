@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -136,4 +136,41 @@ test("cardArt output is pinned (web/mobile drift would break verified cards)", (
     panels: ["flame", "star", "dice", "dice", "leaf", "star", "moon", "leaf", "star"],
   });
   assert.deepEqual(cardArt(loss), cardArt(Uint8Array.from(loss)));
+});
+
+test("usdcForSale mirrors the program (spread, floor)", () => {
+  assert.equal(usdcForSale(1_000_000n, 150n * 100_000_000n), 149_250_000n);
+  assert.equal(usdcForSale(0n, 1n), 0n);
+  // round trip never profits: $1 of TSLA bought at 248.31 sells for < $1
+  const sh = sharesFor(1, 1_000_000n, 24_831_000_000n);
+  assert.ok(usdcForSale(sh, 24_831_000_000n) < 1_000_000n);
+});
+
+test("sell instructions resolve every account", async () => {
+  const [user, mint, usdc] = [Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey];
+  const ix = await sellToVaultIx(program, user, mint, usdc, 1_000_000n, 0n);
+  const keys = ix.keys.map((k) => k.pubkey.toBase58());
+  assert.ok(keys.includes(sellQuotePda(mint).toBase58()));
+  assert.ok(keys.includes(vaultPda(mint).toBase58()));
+  assert.equal(ix.keys.filter((k) => k.isSigner).length, 1);
+  await setSellQuoteIx(program, user, mint, 1n, 1);
+  await ackSoldIx(program, user, mint, 1n);
+  await initSellQuoteIx(program, user, mint, usdc, 1n, 1);
+});
+
+test("sell() refuses the Payments API on devnet; paymentsSwapTx wires quote → swap", async () => {
+  const [user, mint, usdc] = [Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey];
+  await assert.rejects(
+    sell({ program, base: new Connection("http://127.0.0.1:8899"), signer: { publicKey: user, signTransaction: async (t) => t }, network: "devnet", stockMint: mint, usdcMint: usdc, shares: 1n, backend: "paymentsApi" }),
+    /disabled on devnet/,
+  );
+  const calls: string[] = [];
+  const fake = (async (url: string, init?: RequestInit) => {
+    calls.push(String(url).split("?")[0].replace("https://x", ""));
+    if (String(url).includes("/quote")) return new Response(JSON.stringify({ outAmount: "5" }));
+    assert.equal(JSON.parse(String(init?.body)).visibility, "public");
+    return new Response("", { status: 500 }); // stop after proving the swap request shape
+  }) as typeof fetch;
+  await assert.rejects(paymentsSwapTx({ baseUrl: "https://x", userPublicKey: user, inputMint: mint, outputMint: usdc, amount: 1n, slippageBps: 100, fetchImpl: fake }), /swap build failed: 500/);
+  assert.deepEqual(calls, ["/v1/swap/quote", "/v1/swap/swap"]);
 });

@@ -53,3 +53,12 @@ test("planWalk stays inside the band and lands exactly on the target", () => {
   assert.equal(down.at(-1), 20_000_000_000n);
   assert.deepEqual(planWalk(0n, 5n, band), [5n]); // first push has no band
 });
+
+import { planQuote } from "./quotes.js";
+test("quotes follow fresh feed readings only", () => {
+  const q = { ts: 1_000, priceE8: 100n };
+  assert.equal(planQuote({ price: 5n, publishTs: 1_010 }, q, 1_020), "post");
+  assert.equal(planQuote({ price: 5n, publishTs: 1_000 }, q, 1_020), "skip", "not newer than the quote");
+  assert.equal(planQuote({ price: 5n, publishTs: 1_010 }, q, 1_100), "skip", "feed stale: market closed, let the quote expire");
+  assert.equal(planQuote({ price: 0n, publishTs: 1_010 }, q, 1_020), "skip");
+});
