@@ -3,7 +3,7 @@ import { createMagicAtaInstruction, createTopUpEscrowInstruction, delegateSpl, w
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
-import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, statsPda, vaultPda } from "./pda.js";
+import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, statsPda, treasuryAuthPda, vaultPda } from "./pda.js";
 import type { ScratchersProgram } from "./program.js";
 import type { Tier } from "./tiers.js";
 import { totalWeight } from "./tiers.js";
@@ -199,8 +199,8 @@ export const payOutIx = (p: ScratchersProgram, keeper: PublicKey, authority: Pub
 
 // ---- USDC in and out (rollup) --------------------------------------------------------------
 
-/** The program-held USDC token account on the rollup: ATA of the Config PDA. Create it as a Magic ATA. */
-export const treasuryUsdc = (usdcMint: PublicKey) => getAssociatedTokenAddressSync(usdcMint, configPda(), true);
+/** The program-held USDC token account on the rollup: ATA of the `treasury` PDA, created as a Magic ATA (rollup only). */
+export const treasuryUsdc = (usdcMint: PublicKey) => getAssociatedTokenAddressSync(usdcMint, treasuryAuthPda(), true);
 
 const fundsAccounts = (authority: PublicKey, usdcMint: PublicKey) => ({
   authority,
@@ -232,5 +232,5 @@ export const depositToRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amount
 export const withdrawFromRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) =>
   withdrawSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: false });
 
-/** Rollup tx (one-time, admin/keeper): create the Config-PDA treasury as a Magic ATA so `deposit_usdc` has a destination. */
-export const createTreasuryIx = (payer: PublicKey, usdcMint: PublicKey) => createMagicAtaInstruction(payer, configPda(), usdcMint);
+/** Rollup tx (one-time, admin/keeper): create the treasury as a Magic ATA so `deposit_usdc` has a destination. */
+export const createTreasuryIx = (payer: PublicKey, usdcMint: PublicKey) => createMagicAtaInstruction(payer, treasuryAuthPda(), usdcMint);

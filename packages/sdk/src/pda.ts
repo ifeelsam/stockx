@@ -10,6 +10,8 @@ export const playerPda = (authority: PublicKey) => find([Buffer.from("player"), 
 export const vaultPda = (stockMint: PublicKey) => find([Buffer.from("vault"), stockMint.toBuffer()]);
 export const sellQuotePda = (stockMint: PublicKey) => find([Buffer.from("quote"), stockMint.toBuffer()]);
 export const statsPda = (seriesId: number) => find([Buffer.from("stats"), u16le(seriesId)]);
+/** Authority of the USDC treasury Magic ATA. Never created on base. */
+export const treasuryAuthPda = () => find([Buffer.from("treasury")]);
 export const feedPda = (feedId: Uint8Array) => find([Buffer.from("feed"), feedId]);
 export const programIdentityPda = () => find([Buffer.from("identity")]);
 export const payoutPda = (player: PublicKey, cardId: bigint) => {

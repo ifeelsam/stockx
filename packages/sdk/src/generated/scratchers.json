@@ -1549,9 +1549,32 @@
           "writable": true
         },
         {
+          "name": "treasury_auth",
+          "docs": [
+            "(rollup-only), and a base-layer account at the same ATA address would only be cloned read-only."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasury_usdc",
           "docs": [
-            "Program-held USDC (owned by the Config PDA)."
+            "Program-held USDC on the rollup (a Magic ATA owned by `treasury_auth`)."
           ],
           "writable": true
         },
@@ -3911,9 +3934,32 @@
           "writable": true
         },
         {
+          "name": "treasury_auth",
+          "docs": [
+            "(rollup-only), and a base-layer account at the same ATA address would only be cloned read-only."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasury_usdc",
           "docs": [
-            "Program-held USDC (owned by the Config PDA)."
+            "Program-held USDC on the rollup (a Magic ATA owned by `treasury_auth`)."
           ],
           "writable": true
         },

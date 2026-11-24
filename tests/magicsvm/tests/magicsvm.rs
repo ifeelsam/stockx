@@ -746,7 +746,7 @@ fn er_token_amount(e: &Env, a: &Pubkey) -> u64 {
 fn funds_ix(e: &Env, signer: &Keypair, user_usdc: Pubkey, treasury: Pubkey, deposit: bool, amount: u64) -> Instruction {
     let accounts = scratchers::accounts::Funds {
         authority: pk(&signer.pubkey()), player: e.player, config: e.config, usdc_mint: e.usdc, user_usdc,
-        treasury_usdc: treasury, token_program: anchor_spl::token::ID };
+        treasury_auth: pda(&[b"treasury"]), treasury_usdc: treasury, token_program: anchor_spl::token::ID };
     if deposit { ix(ix_data::DepositUsdc { amount }, accounts) } else { ix(ix_data::WithdrawUsdc { amount }, accounts) }
 }
 
@@ -755,7 +755,7 @@ fn usdc_deposit_funds_the_ledger_and_withdraw_returns_it() {
     let mut e = setup(0, 10_000_000_000, default_tiers());
     let user = e.user.insecure_clone();
     let user_usdc = put_er_token(&mut e, &pk(&user.pubkey()), 50_000_000);
-    let cfg = e.config;
+    let cfg = pda(&[b"treasury"]);
     let treasury = put_er_token(&mut e, &cfg, 0);
 
     let dep = funds_ix(&e, &user, user_usdc, treasury, true, 30_000_000);
@@ -785,7 +785,7 @@ fn session_key_cannot_move_funds_in_or_out() {
     let session = e.session.insecure_clone();
     let owner = pk(&e.user.pubkey());
     let user_usdc = put_er_token(&mut e, &owner, 50_000_000);
-    let cfg = e.config;
+    let cfg = pda(&[b"treasury"]);
     let treasury = put_er_token(&mut e, &cfg, 10_000_000);
     // Signing as the session key: the player PDA seeds are derived from the signer, so it cannot name another player.
     for deposit in [true, false] {

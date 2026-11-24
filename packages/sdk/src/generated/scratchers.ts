@@ -1555,9 +1555,32 @@ export type Scratchers = {
           "writable": true
         },
         {
+          "name": "treasuryAuth",
+          "docs": [
+            "(rollup-only), and a base-layer account at the same ATA address would only be cloned read-only."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasuryUsdc",
           "docs": [
-            "Program-held USDC (owned by the Config PDA)."
+            "Program-held USDC on the rollup (a Magic ATA owned by `treasury_auth`)."
           ],
           "writable": true
         },
@@ -3917,9 +3940,32 @@ export type Scratchers = {
           "writable": true
         },
         {
+          "name": "treasuryAuth",
+          "docs": [
+            "(rollup-only), and a base-layer account at the same ATA address would only be cloned read-only."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "treasuryUsdc",
           "docs": [
-            "Program-held USDC (owned by the Config PDA)."
+            "Program-held USDC on the rollup (a Magic ATA owned by `treasury_auth`)."
           ],
           "writable": true
         },

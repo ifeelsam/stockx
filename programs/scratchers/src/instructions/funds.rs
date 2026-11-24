@@ -1,5 +1,5 @@
 //! USDC in/out of the rollup. The user's eSPL balance is a plain SPL token account on the rollup;
-//! the program holds funds in a treasury token account owned by the Config PDA, so it can sign
+//! the program holds funds in a treasury token account owned by the `treasury` PDA, so it can sign
 //! withdrawals itself. Spending inside the app is the `Player.usdc_balance_e6` ledger.
 use crate::{error::ScratchError, state::*};
 use anchor_lang::prelude::*;
@@ -18,8 +18,12 @@ pub struct Funds<'info> {
     /// The user's eSPL balance (canonical ATA on the rollup).
     #[account(mut, token::mint = usdc_mint, token::authority = authority)]
     pub user_usdc: Account<'info, TokenAccount>,
-    /// Program-held USDC (owned by the Config PDA).
-    #[account(mut, token::mint = usdc_mint, token::authority = config)]
+    /// CHECK: authority PDA of the treasury. It must never exist on the base layer: the treasury is a Magic ATA
+    /// (rollup-only), and a base-layer account at the same ATA address would only be cloned read-only.
+    #[account(seeds = [b"treasury"], bump)]
+    pub treasury_auth: UncheckedAccount<'info>,
+    /// Program-held USDC on the rollup (a Magic ATA owned by `treasury_auth`).
+    #[account(mut, token::mint = usdc_mint, token::authority = treasury_auth)]
     pub treasury_usdc: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
@@ -55,9 +59,9 @@ pub fn withdraw_usdc(ctx: Context<Funds>, amount: u64) -> Result<()> {
             Transfer {
                 from: ctx.accounts.treasury_usdc.to_account_info(),
                 to: ctx.accounts.user_usdc.to_account_info(),
-                authority: ctx.accounts.config.to_account_info(),
+                authority: ctx.accounts.treasury_auth.to_account_info(),
             },
-            &[&[b"config", &[ctx.accounts.config.bump]]],
+            &[&[b"treasury", &[ctx.bumps.treasury_auth]]],
         ),
         amount,
     )
