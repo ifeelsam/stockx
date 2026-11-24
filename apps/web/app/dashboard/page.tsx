@@ -17,7 +17,7 @@ export default function Dashboard() {
         <h1 className="text-3xl font-black">Public dashboard</h1>
         <p className="text-dim">Actual vs expected payouts, and vault health. {g.backend === "mock" && "(Simulated session data until the devnet deploy.)"}</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {[
           ["Cards sold", sold.toLocaleString()],
           ["Paid out (face)", `$${paidUsd.toLocaleString()}`],

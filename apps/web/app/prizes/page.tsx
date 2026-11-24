@@ -21,11 +21,11 @@ export default function Prizes() {
           </button>
         ))}
       </div>
-      <div className="overflow-hidden rounded-2xl border border-line">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-sm">
           <thead className="bg-surface text-left text-dim">
             <tr>
-              <th className="p-3">Tier</th><th className="p-3">Multiplier</th><th className="p-3">Odds</th><th className="p-3 text-right">Weight</th><th className="p-3 text-right">RTP</th>
+              <th className="p-3">Tier</th><th className="p-3">Multiplier</th><th className="p-3">Odds</th><th className="hidden p-3 text-right sm:table-cell">Weight</th><th className="p-3 text-right">RTP</th>
             </tr>
           </thead>
           <tbody>
@@ -34,13 +34,13 @@ export default function Prizes() {
                 <td className="p-3 font-semibold" style={{ color: tierByIndex(i).color }}>{TIER_NAMES[i]}</td>
                 <td className="num p-3">{t.multiplier}×</td>
                 <td className="num p-3">1 in {(total / t.weight).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                <td className="num p-3 text-right">{t.weight.toLocaleString()}</td>
+                <td className="num hidden p-3 text-right sm:table-cell">{t.weight.toLocaleString()}</td>
                 <td className="num p-3 text-right">{((t.multiplier * t.weight) / total * 100).toFixed(2)}%</td>
               </tr>
             ))}
           </tbody>
           <tfoot className="border-t border-line bg-surface">
-            <tr><td className="p-3 font-bold" colSpan={3}>Total</td><td className="num p-3 text-right">{total.toLocaleString()}</td><td className="num p-3 text-right font-bold text-money">{(rtp(s.tiers) * 100).toFixed(2)}%</td></tr>
+            <tr><td className="p-3 font-bold" colSpan={3}>Total</td><td className="num hidden p-3 text-right sm:table-cell">{total.toLocaleString()}</td><td className="num p-3 text-right font-bold text-money">{(rtp(s.tiers) * 100).toFixed(2)}%</td></tr>
           </tfoot>
         </table>
       </div>
