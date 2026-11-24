@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/dist
+**/android
+**/ios
+**/.expo
+target
+test-ledger
+tests/magicsvm/target
+.git
+**/.env*
+**/*.keystore

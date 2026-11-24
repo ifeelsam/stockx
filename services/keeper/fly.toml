@@ -1,0 +1,22 @@
+app = "stock-scratchers-keeper"
+primary_region = "sin"
+
+[build]
+  # deploy from the repo root: fly deploy -c services/keeper/fly.toml --dockerfile services/keeper/Dockerfile
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+  PRICE_SOURCE = "hermes"   # "dev" = synthetic random walk (demo only)
+  REFILL_STOCK = "1"        # devnet mock refill
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"   # the price pusher must never sleep
+  min_machines_running = 1
+
+[[http_service.checks]]
+  path = "/healthz"
+  interval = "15s"
+  timeout = "3s"

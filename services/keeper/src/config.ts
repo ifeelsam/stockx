@@ -10,7 +10,9 @@ export type Deployments = {
   series: { id: number; stock: string; demo: boolean; pda: string; vault: string }[];
 };
 
-const key = (path: string) => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(path.replace(/^~/, homedir()), "utf8"))));
+const fromBytes = (json: string) => Keypair.fromSecretKey(Uint8Array.from(JSON.parse(json)));
+/** Key from an inline JSON secret (container secrets) when set, else from a file. */
+const key = (path: string, inlineJson?: string) => (inlineJson ? fromBytes(inlineJson) : fromBytes(readFileSync(path.replace(/^~/, homedir()), "utf8")));
 
 export function loadConfig(env = process.env) {
   const dir = join(homedir(), ".config", "stockx");
@@ -19,8 +21,8 @@ export function loadConfig(env = process.env) {
     port: Number(env.PORT ?? 8787),
     rpcUrl: env.RPC_URL,
     region: (env.REGION as "asia" | "eu" | "us" | undefined) ?? "asia",
-    keeper: key(env.KEEPER_KEYPAIR_PATH ?? join(dir, "keeper.json")),
-    faucet: key(faucetPath),
+    keeper: key(env.KEEPER_KEYPAIR_PATH ?? join(dir, "keeper.json"), env.KEEPER_KEYPAIR_JSON),
+    faucet: key(faucetPath, env.FAUCET_AUTHORITY_KEYPAIR_JSON),
     deployments: JSON.parse(readFileSync(env.DEPLOYMENTS ?? join(import.meta.dirname, "../../../deployments/devnet.json"), "utf8")) as Deployments,
     priceSource: (env.PRICE_SOURCE ?? "hermes") as "hermes" | "dev",
     hermesUrl: env.HERMES_URL ?? "https://hermes.pyth.network",
