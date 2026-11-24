@@ -10,7 +10,7 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  buyCardIx, CardState, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs,
+  buyCardIx, CardState, fetchStats, fetchSellQuote, sell, signerFrom, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs,
   depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc, DEFAULT_TIERS,
 } from "@scratchers/sdk";
 import { exists, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
@@ -20,6 +20,22 @@ const seriesId = Number(process.env.SERIES ?? 3);
 const series = dep.series.find((s: { id: number }) => s.id === seriesId);
 if (!series) throw new Error(`series ${seriesId} not in deployments`);
 
+async function extras(got: bigint) {
+  const c = connect({ baseUrl: process.env.RPC_URL });
+  const rollup = getProgram(c.rollup), base = getProgram(c.base);
+  const st = await fetchStats(rollup, seriesId);
+  console.log(`  ✓ Stats on rollup: sold ${st.cardsSold}, tier counts [${st.tierCounts.map((n: { toString(): string }) => n.toString()).join(",")}], shares won ${st.sharesWon}`);
+  if (got === 0n || !lastUser) return;
+  const stock = new PublicKey(dep.mints[series.stock]), usdc = new PublicKey(dep.mints.mUSDC);
+  const q = await fetchSellQuote(base, stock);
+  console.log(`  sell quote age ${q.ageS}s (${q.stale ? "STALE" : "fresh"})`);
+  if (q.stale) return console.log("  - skipping sell: keeper has not posted a fresh quote");
+  const sig = await sell({ program: base, base: c.base, signer: signerFrom(lastUser.publicKey, async (t: any) => (t.partialSign(lastUser), t)), network: "devnet", stockMint: stock, usdcMint: usdc, shares: got });
+  const usd = (await getAccount(c.base, getAssociatedTokenAddressSync(usdc, lastUser.publicKey))).amount;
+  console.log(`  ✓ sold ${got} share-units to the vault (${sig.slice(0, 12)}…); base USDC now ${usd} (e6)`);
+}
+let lastUser: Keypair | null = null;
+
 async function main() {
   const c = connect({ baseUrl: process.env.RPC_URL });
   const base = getProgram(c.base), rollup = getProgram(c.rollup);
@@ -27,6 +43,7 @@ async function main() {
   const [usdc, stock] = [new PublicKey(dep.mints.mUSDC), new PublicKey(dep.mints[series.stock])];
   const feed = new PublicKey(dep.feeds[series.stock].pda);
   const user = Keypair.generate(), session = Keypair.generate();
+  lastUser = user;
   console.log(`user ${user.publicKey.toBase58()}  series ${seriesId} (${series.stock})  rollup ${c.rollup.rpcEndpoint}`);
 
   // 1. fund: SOL for fees/rent, 50 mock USDC (deployer is the mint authority)
@@ -76,7 +93,11 @@ async function main() {
   const want = wins.reduce((a, k) => a + BigInt(k.shares.toString()), 0n);
   for (let i = 0; i < 60; i++) {
     const got = (await getAccount(c.base, stockAta).catch(() => null))?.amount ?? 0n;
-    if (got >= want) return console.log(`  ✓ ${got} share-units arrived on Solana (expected ${want}). E2E OK`);
+    if (got >= want) {
+      console.log(`  ✓ ${got} share-units arrived on Solana (expected ${want})`);
+      await extras(got);
+      return console.log("  E2E OK");
+    }
     await sleep(2000);
   }
   console.log("  ✗ shares did not arrive: dropped Magic Action? The keeper's pay_out repair should land them; check keeper logs.");

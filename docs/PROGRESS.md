@@ -4,11 +4,11 @@
 
 ## Devnet verification (2026-11-24)
 
-**Live and verified on devnet** (program `EQaiygf…`, rollup devnet-as): `pnpm --filter @scratchers/scripts e2e:devnet` passes end to end: signup → delegate Player → eSPL `delegateSpl` of 50 mUSDC → Magic-ATA treasury → `create_session` → `deposit_usdc` → `buy_card ×10` signed only by the session key → 10 VRF reveals (arrive in about a second) → every tier recomputes from its seed → `claim_all` (commit + Magic Action) → shares land on Solana exactly (92,939 units expected = received) with no keeper repair needed.
+**Live and verified on devnet** (program `EQaiygf…`, rollup devnet-as): `pnpm --filter @scratchers/scripts e2e:devnet` passes end to end: signup → delegate Player → eSPL `delegateSpl` of 50 mUSDC → Magic-ATA treasury → `create_session` → `deposit_usdc` → `buy_card ×10` signed only by the session key → 10 VRF reveals (arrive in about a second) → every tier recomputes from its seed → `claim_all` (commit + Magic Action) → shares land on Solana exactly (92,939 units expected = received) with no keeper repair needed. The same script then reads `Stats` back from the rollup (counters match) and sells the shares to the vault via `sell_to_vault` at the keeper-posted quote (both verified).
 
 Bugs only devnet could find (all fixed): treasury shared an address with the base-layer sell pool, so the rollup held a read-only clone (`deposit_usdc` → "Account is immutable"); `setup:devnet` re-synced inventory on every run (it read the delegated vault from the base layer), double-counting the mirror; `fetchPlayer` connection override. Public RPC rate limits (429) make `setup` slow but it is idempotent.
 
-Still unverified: keeper price relay against real Hermes (running on synthetic prices), dropped-Magic-Action repair path, commit-limit/fee-vault behaviour, sell (`sell_to_vault`) on devnet, Privy login, Seeker/MWA signing, the chain-backend UI in a browser/phone, `Stats` readback.
+Still unverified: keeper price relay against real Hermes (running on synthetic prices), dropped-Magic-Action repair path, commit-limit/fee-vault behaviour, Privy login, Seeker/MWA signing, the chain-backend UI in a browser/phone.
 
 ## Status (2026-11-24, session 1)
 
