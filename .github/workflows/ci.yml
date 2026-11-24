@@ -1,0 +1,26 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @scratchers/ui-tokens build && pnpm --filter @scratchers/sdk build && pnpm --filter @scratchers/app-core build
+      - run: pnpm -r typecheck
+      - run: pnpm --filter @scratchers/sdk test && pnpm --filter @scratchers/keeper test && pnpm --filter @scratchers/ui-tokens test
+      - run: pnpm --filter @scratchers/web build
+
+  program-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p scratchers
