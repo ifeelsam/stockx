@@ -14,6 +14,75 @@ export type Scratchers = {
   },
   "instructions": [
     {
+      "name": "ackSold",
+      "docs": [
+        "Keeper: record that sold shares were credited to the rollup inventory mirror."
+      ],
+      "discriminator": [
+        124,
+        213,
+        91,
+        59,
+        77,
+        39,
+        176,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote.stockMint",
+                "account": "sellQuote"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "totalSynced",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "buyCard",
       "discriminator": [
         113,
@@ -1471,6 +1540,193 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "initSellQuote",
+      "docs": [
+        "Admin: create the base-layer sell quote + the USDC sell pool for a stock mint."
+      ],
+      "discriminator": [
+        196,
+        207,
+        1,
+        215,
+        249,
+        37,
+        57,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stockMint"
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "sellPool",
+          "docs": [
+            "USDC the program pays sellers from (owned by the Config PDA). Fund it with plain transfers."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "priceE8",
+          "type": "u64"
+        },
+        {
+          "name": "ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "initVault",
       "discriminator": [
         77,
@@ -2307,6 +2563,465 @@ export type Scratchers = {
       "args": []
     },
     {
+      "name": "sellToVault",
+      "docs": [
+        "Player: sell stock shares to the vault at the quote (devnet mock pool; mainnet uses the Payments API)."
+      ],
+      "discriminator": [
+        234,
+        0,
+        247,
+        221,
+        161,
+        35,
+        97,
+        111
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stockMint"
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "userStock",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vaultToken",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stockMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "sellPool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "userUsdc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        },
+        {
+          "name": "minUsdcE6",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setSellQuote",
+      "docs": [
+        "Keeper: post a fresh sell quote."
+      ],
+      "discriminator": [
+        9,
+        21,
+        62,
+        236,
+        222,
+        24,
+        1,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "quote",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  113,
+                  117,
+                  111,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "quote.stockMint",
+                "account": "sellQuote"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "priceE8",
+          "type": "u64"
+        },
+        {
+          "name": "ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "signup",
       "discriminator": [
         131,
@@ -2842,6 +3557,19 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "sellQuote",
+      "discriminator": [
+        110,
+        144,
+        255,
+        160,
+        152,
+        191,
+        65,
+        9
+      ]
+    },
+    {
       "name": "series",
       "discriminator": [
         240,
@@ -2946,6 +3674,19 @@ export type Scratchers = {
         23,
         217
       ]
+    },
+    {
+      "name": "soldToVault",
+      "discriminator": [
+        27,
+        236,
+        79,
+        216,
+        80,
+        249,
+        176,
+        74
+      ]
     }
   ],
   "errors": [
@@ -3028,6 +3769,10 @@ export type Scratchers = {
     {
       "code": 6019,
       "name": "badMint"
+    },
+    {
+      "code": 6020,
+      "name": "slippageExceeded"
     }
   ],
   "types": [
@@ -3508,6 +4253,51 @@ export type Scratchers = {
       }
     },
     {
+      "name": "sellQuote",
+      "docs": [
+        "Base-layer (never delegated) sell quote for one stock mint, posted by the keeper. `sell_to_vault`",
+        "is a single atomic base-layer instruction, so it cannot read the delegated rollup feed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "stockMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "priceE8",
+            "docs": [
+              "USD per whole share, 1e8 fixed point (mid; the spread is applied at sale time)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          },
+          {
+            "name": "totalSoldShares",
+            "docs": [
+              "cumulative shares sold into the vault"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "syncedSoldShares",
+            "docs": [
+              "part of `total_sold_shares` already credited to the rollup inventory mirror"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "series",
       "type": {
         "kind": "struct",
@@ -3588,6 +4378,34 @@ export type Scratchers = {
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "soldToVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "stockMint",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "usdcE6",
+            "type": "u64"
+          },
+          {
+            "name": "priceE8",
+            "type": "u64"
           }
         ]
       }

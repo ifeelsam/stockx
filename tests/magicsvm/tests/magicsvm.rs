@@ -18,7 +18,7 @@ use magicsvm::{MagicSVM, TransactionTarget};
 use scratchers::{
     error::ScratchError,
     instruction as ix_data,
-    state::{Card, CardState, Config, Payout, Player, Series, Tier, VaultState},
+    state::{Card, CardState, Config, Payout, Player, SellQuote, Series, Tier, VaultState},
 };
 use solana_address::Address;
 use solana_clock::Clock;
@@ -776,4 +776,129 @@ fn session_key_cannot_move_funds_in_or_out() {
     }
     assert_eq!(er_token_amount(&e, &treasury), 10_000_000);
     assert_eq!(er_token_amount(&e, &user_usdc), 50_000_000);
+}
+
+// ---- sell_to_vault (base layer) ----
+
+const SELL_PRICE: u64 = 150 * 100_000_000;
+
+struct Sell { quote: Pubkey, pool: Pubkey, vault_token: Pubkey, user_stock: Pubkey, user_usdc: Pubkey }
+
+fn sell_setup(e: &mut Env, user_shares: u64, pool_usdc: u64) -> Sell {
+    let (a, u) = (pk(&e.admin.pubkey()), pk(&e.user.pubkey()));
+    let quote = pda(&[b"quote", e.mint.as_ref()]);
+    let pool = ata(&e.config, &e.usdc);
+    let admin = e.admin.insecure_clone();
+    send(&mut e.svm, Base, &[&admin], ix(ix_data::InitSellQuote { price_e8: SELL_PRICE, ts: NOW },
+        scratchers::accounts::InitSellQuote {
+            config: e.config, quote, stock_mint: e.mint, usdc_mint: e.usdc, sell_pool: pool, admin: a,
+            token_program: anchor_spl::token::ID, associated_token_program: anchor_spl::associated_token::ID,
+            system_program: system_program::ID }), "init_sell_quote");
+    e.svm.set_account(addr(pool), token_account(&e.usdc, &e.config, pool_usdc)).unwrap();
+    let (vault_token, user_stock) = (ata(&e.vault, &e.mint), ata(&u, &e.mint));
+    e.svm.set_account(addr(vault_token), token_account(&e.mint, &e.vault, 0)).unwrap();
+    e.svm.set_account(addr(user_stock), token_account(&e.mint, &u, user_shares)).unwrap();
+    Sell { quote, pool, vault_token, user_stock, user_usdc: ata(&u, &e.usdc) }
+}
+fn sell_ix(e: &Env, s: &Sell, who: &Keypair, shares: u64, min_usdc: u64) -> Instruction {
+    ix(ix_data::SellToVault { shares, min_usdc_e6: min_usdc }, scratchers::accounts::SellToVault {
+        user: pk(&who.pubkey()), config: e.config, quote: s.quote, stock_mint: e.mint, usdc_mint: e.usdc,
+        user_stock: s.user_stock, vault: e.vault, vault_token: s.vault_token, sell_pool: s.pool, user_usdc: s.user_usdc,
+        token_program: anchor_spl::token::ID, associated_token_program: anchor_spl::associated_token::ID,
+        system_program: system_program::ID })
+}
+fn set_quote_ix(e: &Env, s: &Sell, who: &Keypair, price: u64, ts: i64) -> Instruction {
+    ix(ix_data::SetSellQuote { price_e8: price, ts },
+        scratchers::accounts::SetSellQuote { config: e.config, authority: pk(&who.pubkey()), quote: s.quote })
+}
+
+#[test]
+fn sell_to_vault_pays_quote_less_spread_and_moves_shares() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    let s = sell_setup(&mut e, 2_000_000, 1_000_000_000);
+    let user = e.user.insecure_clone();
+    let i = sell_ix(&e, &s, &user, 1_000_000, 149_250_000);
+    send(&mut e.svm, Base, &[&user], i, "sell 1 share");
+    assert_eq!(token_amount(&e.svm, &s.user_usdc), 149_250_000, "$150 less 0.5%");
+    assert_eq!(token_amount(&e.svm, &s.user_stock), 1_000_000);
+    assert_eq!(token_amount(&e.svm, &s.vault_token), 1_000_000);
+    assert_eq!(token_amount(&e.svm, &s.pool), 1_000_000_000 - 149_250_000);
+    assert_eq!(read::<SellQuote>(&e.svm, Base, &s.quote).total_sold_shares, 1_000_000);
+}
+
+#[test]
+fn sell_guards_slippage_staleness_pool_and_other_peoples_shares() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    let s = sell_setup(&mut e, 2_000_000, 100_000_000); // pool holds $100: less than one share's worth
+    let user = e.user.insecure_clone();
+
+    let i = sell_ix(&e, &s, &user, 1_000_000, 149_250_001);
+    let err = try_send(&mut e.svm, Base, &[&user], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::SlippageExceeded)), "{err}");
+    let i = sell_ix(&e, &s, &user, 1_000_000, 0);
+    let err = try_send(&mut e.svm, Base, &[&user], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::InsufficientBalance)), "pool too small: {err}");
+
+    // someone else cannot sell the user's shares
+    let thief = Keypair::new();
+    e.svm.airdrop(&thief.pubkey(), 1_000_000_000).unwrap();
+    let i = sell_ix(&e, &s, &thief, 1, 0);
+    assert!(try_send(&mut e.svm, Base, &[&thief], i).is_err());
+
+    // stale quote: sales stop until the keeper posts a fresh one
+    e.svm.set_account(addr(s.pool), token_account(&e.usdc, &e.config, 1_000_000_000)).unwrap();
+    set_time(&mut e.svm, NOW + 91);
+    let i = sell_ix(&e, &s, &user, 1_000_000, 0);
+    let err = try_send(&mut e.svm, Base, &[&user], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceStale)), "{err}");
+    let admin = e.admin.insecure_clone(); // admin doubles as keeper in this fixture
+    let i = set_quote_ix(&e, &s, &admin, SELL_PRICE + 1_000_000, NOW + 90);
+    send(&mut e.svm, Base, &[&admin], i, "fresh quote");
+    let i = sell_ix(&e, &s, &user, 1_000_000, 0);
+    send(&mut e.svm, Base, &[&user], i, "sell after refresh");
+}
+
+#[test]
+fn quote_updates_are_gated_monotonic_and_banded() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    let s = sell_setup(&mut e, 0, 0);
+    let admin = e.admin.insecure_clone();
+    set_time(&mut e.svm, NOW + 10);
+    let stranger = Keypair::new();
+    e.svm.airdrop(&stranger.pubkey(), 1_000_000_000).unwrap();
+    let i = set_quote_ix(&e, &s, &stranger, SELL_PRICE, NOW + 5);
+    let err = try_send(&mut e.svm, Base, &[&stranger], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::Unauthorized)), "{err}");
+    let i = set_quote_ix(&e, &s, &admin, SELL_PRICE, NOW);
+    let err = try_send(&mut e.svm, Base, &[&admin], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceStale)), "non-increasing ts: {err}");
+    let i = set_quote_ix(&e, &s, &admin, SELL_PRICE * 12 / 10, NOW + 5);
+    let err = try_send(&mut e.svm, Base, &[&admin], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::PriceOutOfBand)), "+20% in one step: {err}");
+    let i = set_quote_ix(&e, &s, &admin, SELL_PRICE * 105 / 100, NOW + 5);
+    send(&mut e.svm, Base, &[&admin], i, "+5% ok");
+    // after a long market gap the band does not apply (keeper walks feeds, quote just resets)
+    set_time(&mut e.svm, NOW + 10_000);
+    let i = set_quote_ix(&e, &s, &admin, SELL_PRICE * 2, NOW + 9_999);
+    send(&mut e.svm, Base, &[&admin], i, "gap reset");
+}
+
+#[test]
+fn ack_sold_only_moves_within_total_sold() {
+    let mut e = setup(0, 10_000_000_000, default_tiers());
+    let s = sell_setup(&mut e, 3_000_000, 1_000_000_000);
+    let (user, admin) = (e.user.insecure_clone(), e.admin.insecure_clone());
+    let i = sell_ix(&e, &s, &user, 3_000_000, 0);
+    send(&mut e.svm, Base, &[&user], i, "sell 3");
+    let ack = |e: &Env, n: u64, who: &Keypair| ix(ix_data::AckSold { total_synced: n },
+        scratchers::accounts::AckSold { config: e.config, authority: pk(&who.pubkey()), quote: s.quote });
+    let i = ack(&e, 3_000_001, &admin);
+    let err = try_send(&mut e.svm, Base, &[&admin], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::BadState)), "{err}");
+    let i = ack(&e, 3_000_000, &admin);
+    send(&mut e.svm, Base, &[&admin], i, "ack");
+    let i = ack(&e, 1_000_000, &admin);
+    let err = try_send(&mut e.svm, Base, &[&admin], i).unwrap_err();
+    assert!(err.contains(&custom(ScratchError::BadState)), "cannot move backwards: {err}");
+    assert_eq!(read::<SellQuote>(&e.svm, Base, &s.quote).synced_sold_shares, 3_000_000);
 }

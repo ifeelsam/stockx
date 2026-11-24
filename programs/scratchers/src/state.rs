@@ -82,6 +82,35 @@ pub struct VaultState {
     pub bump: u8,
 }
 
+/// Base-layer (never delegated) sell quote for one stock mint, posted by the keeper. `sell_to_vault`
+/// is a single atomic base-layer instruction, so it cannot read the delegated rollup feed.
+#[account]
+#[derive(InitSpace)]
+pub struct SellQuote {
+    pub stock_mint: Pubkey,
+    /// USD per whole share, 1e8 fixed point (mid; the spread is applied at sale time)
+    pub price_e8: u64,
+    pub ts: i64,
+    /// cumulative shares sold into the vault
+    pub total_sold_shares: u64,
+    /// part of `total_sold_shares` already credited to the rollup inventory mirror
+    pub synced_sold_shares: u64,
+    pub bump: u8,
+}
+
+/// Quotes older than this cannot be sold into.
+pub const SELL_QUOTE_TTL_S: i64 = 90;
+/// House spread on sells (basis points), so a stale-but-fresh-enough quote cannot be farmed.
+pub const SELL_SPREAD_BPS: u128 = 50;
+/// Max quote move per update when the previous quote is under an hour old.
+pub const QUOTE_MAX_MOVE_BPS: u128 = 1_000;
+
+/// USDC (1e-6) paid for `shares` (1e-6 units) at `price_e8`, minus the spread. Floors.
+pub fn usdc_for_sale(shares: u64, price_e8: u64) -> Option<u64> {
+    let gross = shares as u128 * price_e8 as u128 / 100_000_000u128;
+    u64::try_from(gross * (10_000 - SELL_SPREAD_BPS) / 10_000).ok()
+}
+
 /// Exactly-once payout receipt; PDA ["payout", player, card_id].
 #[account]
 #[derive(InitSpace)]
@@ -115,6 +144,20 @@ pub fn shares_for(multiplier: u16, ticket_usd_e6: u64, price_e8: u64) -> Option<
     }
     let n = multiplier as u128 * ticket_usd_e6 as u128 * 100_000_000u128; // 1e6 decimals · 1e8 price scale / 1e6 ticket scale
     u64::try_from(n / price_e8 as u128).ok()
+}
+
+#[cfg(test)]
+mod sell_tests {
+    use super::*;
+    #[test]
+    fn sale_math_applies_spread_and_floors() {
+        // 1 share at $150 → $150 less 0.5%
+        assert_eq!(usdc_for_sale(1_000_000, 150 * 100_000_000), Some(149_250_000));
+        assert_eq!(usdc_for_sale(0, 1), Some(0));
+        // buying then selling the same shares at the same price never makes money
+        let shares = shares_for(1, 1_000_000, 248_31_000_000).unwrap();
+        assert!(usdc_for_sale(shares, 248_31_000_000).unwrap() < 1_000_000);
+    }
 }
 
 #[repr(u8)]

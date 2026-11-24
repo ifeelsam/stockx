@@ -23,4 +23,5 @@ pub enum ScratchError {
     SeriesFrozen,
     BadPrizeTable,
     BadMint,
+    SlippageExceeded,
 }

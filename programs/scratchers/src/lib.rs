@@ -54,6 +54,23 @@ pub mod scratchers {
         instructions::pay_out(ctx, card_id)
     }
 
+    /// Admin: create the base-layer sell quote + the USDC sell pool for a stock mint.
+    pub fn init_sell_quote(ctx: Context<InitSellQuote>, price_e8: u64, ts: i64) -> Result<()> {
+        instructions::init_sell_quote(ctx, price_e8, ts)
+    }
+    /// Keeper: post a fresh sell quote.
+    pub fn set_sell_quote(ctx: Context<SetSellQuote>, price_e8: u64, ts: i64) -> Result<()> {
+        instructions::set_sell_quote(ctx, price_e8, ts)
+    }
+    /// Player: sell stock shares to the vault at the quote (devnet mock pool; mainnet uses the Payments API).
+    pub fn sell_to_vault(ctx: Context<SellToVault>, shares: u64, min_usdc_e6: u64) -> Result<()> {
+        instructions::sell_to_vault(ctx, shares, min_usdc_e6)
+    }
+    /// Keeper: record that sold shares were credited to the rollup inventory mirror.
+    pub fn ack_sold(ctx: Context<AckSold>, total_synced: u64) -> Result<()> {
+        instructions::ack_sold(ctx, total_synced)
+    }
+
     // ---- Ephemeral rollup ----
     pub fn undelegate_player(ctx: Context<UndelegatePlayer>) -> Result<()> {
         instructions::undelegate_player(ctx)

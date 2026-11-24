@@ -47,3 +47,12 @@ pub struct PaidOut {
     pub card_id: u64,
     pub shares: u64,
 }
+
+#[event]
+pub struct SoldToVault {
+    pub user: Pubkey,
+    pub stock_mint: Pubkey,
+    pub shares: u64,
+    pub usdc_e6: u64,
+    pub price_e8: u64,
+}
