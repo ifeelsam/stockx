@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SERIES, isEquity, seriesById, useGame } from "@scratchers/app-core";
 import { colors, easing, timing, tierByMultiplier } from "@scratchers/ui-tokens";
 import { ScratchCard } from "../components/ScratchCard";
@@ -54,7 +54,7 @@ export function Play() {
         {live.map((c, i) => {
           const cs = seriesById(c.seriesId);
           return (
-            <Animated.View key={c.id} entering={FadeInDown.delay((i % 10) * timing.packStagger).springify().damping(easing.spring.damping).stiffness(easing.spring.stiffness)} layout={LinearTransition} style={{ alignItems: "center", gap: 6, marginBottom: 20 }}>
+            <Animated.View key={c.id} entering={FadeInDown.delay((i % 10) * timing.packStagger).springify().damping(easing.spring.damping).stiffness(easing.spring.stiffness)} style={{ alignItems: "center", gap: 6, marginBottom: 20 }}>
               <Text style={[ui.dim, { fontSize: 12 }]}>#{c.id} · {cs.ticker}{c.state === "claiming" ? " · settling…" : ""}</Text>
               {c.state === "pending" || !c.art ? (
                 <View style={{ width: 300, height: 300, borderRadius: 20, backgroundColor: colors.surfaceHi, opacity: 0.6 }} />

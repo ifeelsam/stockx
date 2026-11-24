@@ -10,6 +10,7 @@ import { revealFx } from "../lib/fx";
 
 const SIZE = 300;
 const BRUSH = 44;
+const CELL = Math.floor((SIZE - 24 - 16) / 3); // floor: exact-fit floats wrap the 3rd cell to a new row
 const GRID = 12; // coverage grid: reveal once 60% of cells have been scratched
 
 export function ScratchCard({ art, scratched, onDone, disabled }: { art: CardArt; scratched: boolean; onDone: () => void; disabled?: boolean }) {
@@ -89,8 +90,8 @@ export function ScratchCard({ art, scratched, onDone, disabled }: { art: CardArt
 }
 
 const styles = StyleSheet.create({
-  grid: { ...StyleSheet.absoluteFill, flexDirection: "row", flexWrap: "wrap", gap: 8, padding: 12, borderRadius: 20, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
-  cell: { width: (SIZE - 24 - 16) / 3, height: (SIZE - 24 - 16) / 3, borderRadius: 12, backgroundColor: colors.surfaceHi, alignItems: "center", justifyContent: "center" },
+  grid: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, flexDirection: "row", flexWrap: "wrap", gap: 8, padding: 12, overflow: "hidden", alignContent: "flex-start", borderRadius: 20, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
+  cell: { width: CELL, height: CELL, borderRadius: 12, backgroundColor: colors.surfaceHi, alignItems: "center", justifyContent: "center" },
   hint: { position: "absolute", top: SIZE / 2 - 10, width: SIZE, textAlign: "center", color: "rgba(255,255,255,0.55)", fontWeight: "600", fontSize: 18 },
   reveal: { position: "absolute", bottom: -26, alignSelf: "center", color: colors.textDim, textDecorationLine: "underline", fontSize: 12 },
 });
