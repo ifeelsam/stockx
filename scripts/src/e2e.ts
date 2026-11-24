@@ -57,7 +57,7 @@ async function main() {
   const t0 = Date.now();
   let cards: Awaited<ReturnType<typeof fetchPlayer>>["cards"] = [];
   while (Date.now() - t0 < 150_000) {
-    cards = (await fetchPlayer(rollup, user.publicKey, c.rollup)).cards;
+    cards = (await fetchPlayer(rollup, user.publicKey)).cards;
     const pending = cards.filter((x) => x.state === CardState.RandomnessPending).length;
     process.stdout.write(`\r  pending ${pending}  revealed ${cards.filter((x) => x.state === CardState.Revealed).length}   `);
     if (pending === 0) break;

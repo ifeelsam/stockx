@@ -8,8 +8,8 @@ export const cardStateName = (s: number) => Object.entries(CardState).find(([, v
 export type PlayerAccount = Awaited<ReturnType<ScratchersProgram["account"]["player"]["fetch"]>>;
 export type CardAccount = PlayerAccount["cards"][number];
 
-export const fetchPlayer = (p: ScratchersProgram, authority: PublicKey, connection?: Connection) =>
-  (connection ? p.account.player.fetch.call({ ...p, provider: { connection } }, playerPda(authority)) : p.account.player.fetch(playerPda(authority)));
+/** Fetch through the connection the program object is bound to (use a rollup-bound program for a delegated Player). */
+export const fetchPlayer = (p: ScratchersProgram, authority: PublicKey) => p.account.player.fetch(playerPda(authority), "confirmed");
 
 /** Live cards over the rollup websocket. Returns an unsubscribe function. */
 export function subscribeCards(

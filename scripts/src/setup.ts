@@ -136,7 +136,8 @@ async function main() {
   for (const sym of Object.keys(STOCKS)) {
     const vault = vaultPda(mints[sym]);
     for (let i = 0; i < 20 && !(await c.rollup.getAccountInfo(vault)); i++) await sleep(1000); // wait for the clone
-    const v = await program.account.vaultState.fetch(vault, "confirmed").catch(() => null);
+    // the vault is delegated: only the rollup copy is current (a base read fails or is stale)
+    const v = await getProgram(c.rollup).account.vaultState.fetch(vault, "confirmed").catch(() => null);
     if (v && v.availableSharesMirror.gtn(0)) continue; // already synced
     await send(c.rollup, [await syncInventoryIx(program, admin.publicKey, mints[sym], VAULT_SHARES)], [admin], `sync_inventory ${sym}`);
   }

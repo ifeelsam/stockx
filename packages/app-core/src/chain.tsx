@@ -87,7 +87,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     }, 1000);
     loop(async () => setDegraded(await fetchDegraded("devnet", "asia")), 30_000);
     loop(async () => {
-      const p = await fetchPlayer(rollup, user, c.rollup);
+      const p = await fetchPlayer(rollup, user);
       setUsdc(Number(p.usdcBalanceE6.toString()) / 1e6);
       setRawCards(p.cards.filter((k) => k.state !== CardState.Empty));
     }, 800);
@@ -148,7 +148,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     const acc = await c.base.getAccountInfo(playerPda(user), "confirmed");
     if (!acc) return { status: "needed" as const, step: "signup" };
     if (!acc.owner.equals(DLP)) return { status: "needed" as const, step: "delegate" };
-    const p = await fetchPlayer(rollup, user, c.rollup).catch(() => null);
+    const p = await fetchPlayer(rollup, user).catch(() => null);
     const ok = p && p.sessionKey.equals(sessionKey.publicKey) && p.sessionExpiry.toNumber() > Date.now() / 1000 + 120;
     return ok ? { status: "ready" as const, step: "" } : { status: "needed" as const, step: "session" };
   }, [c, rollup, user, sessionKey]);

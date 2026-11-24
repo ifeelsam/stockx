@@ -4,6 +4,7 @@
 |---|---|---|---|---|
 | 2026-11-24 | Program deploy #1 | `EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn` (ProgramData `F9qKVXYKTz5csf9PjzV8SAVdux99PUMpYum2pDe3o2cH`, upgrade authority = deployer `Bo7dijSQzznSVmdy7jY622xrUdekfZgQyJU2dFcNbNvT`) | slot 525813302, tx `4zdGMQ3UVNWEU4UxamqS…` (truncated; full signature via `solana program show`/explorer) | `57c30cb` |
 | 2026-11-24 | `setup:devnet` | mints, config, 3 feeds, 4 series, vaults, quotes, stats, delegation, rollup `sync_inventory`, Magic-ATA treasury | see `deployments/devnet.json` | `57c30cb` |
+| 2026-11-24 | Program upgrade #2 (separate `[treasury]` authority PDA; program data extended +10,240 bytes) | same program id | slot 525835788, tx `2jtMdhbstmg9JaJxLEpj…` (truncated) | `2dddcb6` |
 
 Rollup validator: `MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57` (devnet-as). Binary 739,912 bytes, rent 3.76 SOL.
 
