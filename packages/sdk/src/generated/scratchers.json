@@ -188,6 +188,29 @@
           }
         },
         {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.id",
+                "account": "Series"
+              }
+            ]
+          }
+        },
+        {
           "name": "price_feed"
         },
         {
@@ -1017,6 +1040,224 @@
       ]
     },
     {
+      "name": "delegate_stats",
+      "discriminator": [
+        185,
+        133,
+        115,
+        213,
+        221,
+        169,
+        0,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "buffer_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                199,
+                50,
+                107,
+                147,
+                24,
+                27,
+                227,
+                68,
+                93,
+                220,
+                45,
+                187,
+                192,
+                4,
+                110,
+                180,
+                160,
+                182,
+                184,
+                39,
+                130,
+                166,
+                139,
+                78,
+                198,
+                94,
+                237,
+                174,
+                125,
+                236,
+                221,
+                71
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "series_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_program",
+          "address": "EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "series_id",
+          "type": "u16"
+        },
+        {
+          "name": "validator",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "delegate_vault",
       "discriminator": [
         166,
@@ -1717,6 +1958,101 @@
         {
           "name": "ts",
           "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "init_stats",
+      "discriminator": [
+        203,
+        189,
+        229,
+        174,
+        240,
+        190,
+        158,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  114,
+                  105,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "series_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "series_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "series_id",
+          "type": "u16"
         }
       ]
     },
@@ -3256,6 +3592,80 @@
       "args": []
     },
     {
+      "name": "undelegate_stats",
+      "discriminator": [
+        22,
+        11,
+        169,
+        185,
+        126,
+        54,
+        203,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats.series",
+                "account": "Stats"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "undelegate_vault",
       "discriminator": [
         189,
@@ -3375,6 +3785,29 @@
               {
                 "kind": "account",
                 "path": "series.stock_mint",
+                "account": "Series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.id",
                 "account": "Series"
               }
             ]
@@ -3574,6 +4007,19 @@
         77,
         250,
         162
+      ]
+    },
+    {
+      "name": "Stats",
+      "discriminator": [
+        190,
+        125,
+        51,
+        63,
+        169,
+        197,
+        36,
+        238
       ]
     },
     {
@@ -4400,6 +4846,43 @@
           {
             "name": "price_e8",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Stats",
+      "docs": [
+        "Public per-series counters, delegated so `buy_card` / `vrf_callback` can update them on the rollup.",
+        "`tier_counts` is indexed like `Series.tiers`; `shares_won` is the reveal-time liability (before claim)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "u16"
+          },
+          {
+            "name": "cards_sold",
+            "type": "u64"
+          },
+          {
+            "name": "tier_counts",
+            "type": {
+              "array": [
+                "u64",
+                8
+              ]
+            }
+          },
+          {
+            "name": "shares_won",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

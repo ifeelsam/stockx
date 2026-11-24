@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { statsPda, sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -186,4 +186,10 @@ test("degradedServices flags only Down required services in our region", () => {
   assert.deepEqual(degradedServices(j, "devnet", "usa"), ["Ephemeral Rollup"]);
   assert.deepEqual(degradedServices(j, "devnet", "tee"), []);
   assert.deepEqual(degradedServices({}, "devnet", "asia"), []);
+});
+
+test("buyCardIx carries the series Stats account", async () => {
+  const [u, m, f] = [Keypair.generate().publicKey, Keypair.generate().publicKey, Keypair.generate().publicKey];
+  const ix = await buyCardIx(program, { signer: u, authority: u, seriesId: 3, stockMint: m, feed: f, n: 1, maxPrice: 1n, callerSeed: new Uint8Array(32) });
+  assert.ok(ix.keys.some((k) => k.pubkey.equals(statsPda(3)) && k.isWritable));
 });

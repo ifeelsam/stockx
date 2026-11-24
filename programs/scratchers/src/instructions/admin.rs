@@ -138,3 +138,22 @@ pub fn sync_inventory(ctx: Context<SyncInventory>, added_shares: u64) -> Result<
     v.available_shares_mirror = v.available_shares_mirror.checked_add(added_shares).ok_or(ScratchError::InsufficientInventory)?;
     Ok(())
 }
+
+#[derive(Accounts)]
+#[instruction(series_id: u16)]
+pub struct InitStats<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = admin @ ScratchError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    #[account(seeds = [b"series", series_id.to_le_bytes().as_ref()], bump = series.bump)]
+    pub series: Account<'info, Series>,
+    #[account(init, payer = admin, space = 8 + Stats::INIT_SPACE, seeds = [b"stats", series_id.to_le_bytes().as_ref()], bump)]
+    pub stats: Account<'info, Stats>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+pub fn init_stats(ctx: Context<InitStats>, series_id: u16) -> Result<()> {
+    *ctx.accounts.stats = Stats { series: series_id, cards_sold: 0, tier_counts: [0; 8], shares_won: 0, bump: ctx.bumps.stats };
+    Ok(())
+}

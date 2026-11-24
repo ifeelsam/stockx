@@ -3,7 +3,7 @@ import { createTopUpEscrowInstruction } from "@magicblock-labs/ephemeral-rollups
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
-import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, vaultPda } from "./pda.js";
+import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, statsPda, vaultPda } from "./pda.js";
 import type { ScratchersProgram } from "./program.js";
 import type { Tier } from "./tiers.js";
 import { totalWeight } from "./tiers.js";
@@ -63,6 +63,15 @@ export const initVaultIx = (p: ScratchersProgram, admin: PublicKey, stockMint: P
 export const initFeedIx = (p: ScratchersProgram, admin: PublicKey, feedId: Uint8Array, pusher: PublicKey, expo: number, maxMoveBps = 500) =>
   p.methods.initFeed(Array.from(feedId), pusher, expo, maxMoveBps).accountsPartial({ admin }).instruction();
 
+export const initStatsIx = (p: ScratchersProgram, admin: PublicKey, seriesId: number) =>
+  p.methods.initStats(seriesId).accountsPartial({ admin, series: seriesPda(seriesId), stats: statsPda(seriesId) }).instruction();
+
+export const delegateStatsIx = (p: ScratchersProgram, admin: PublicKey, seriesId: number, validator: PublicKey) =>
+  p.methods.delegateStats(seriesId, validator).accountsPartial({ admin, stats: statsPda(seriesId) }).instruction();
+
+export const undelegateStatsIx = (p: ScratchersProgram, admin: PublicKey, seriesId: number) =>
+  p.methods.undelegateStats().accountsPartial({ admin, stats: statsPda(seriesId) }).instruction();
+
 export const delegateVaultIx = (p: ScratchersProgram, admin: PublicKey, stockMint: PublicKey, validator: PublicKey) =>
   p.methods.delegateVault(validator).accountsPartial({ admin, stockMint, vaultState: vaultPda(stockMint) }).instruction();
 
@@ -118,6 +127,7 @@ export function buyCardIx(p: ScratchersProgram, a: BuyCardParams): Promise<Trans
       config: configPda(),
       series: seriesPda(a.seriesId),
       vaultState: vaultPda(a.stockMint),
+      stats: statsPda(a.seriesId),
       priceFeed: a.feed,
       oracleQueue: VRF_EPHEMERAL_QUEUE,
     })

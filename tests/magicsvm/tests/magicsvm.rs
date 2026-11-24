@@ -18,7 +18,7 @@ use magicsvm::{MagicSVM, TransactionTarget};
 use scratchers::{
     error::ScratchError,
     instruction as ix_data,
-    state::{Card, CardState, Config, Payout, Player, SellQuote, Series, Tier, VaultState},
+    state::{Card, CardState, Config, Payout, Player, SellQuote, Series, Stats, Tier, VaultState},
 };
 use solana_address::Address;
 use solana_clock::Clock;
@@ -72,6 +72,7 @@ struct Env {
     series: Pubkey,
     feed: Pubkey,
     config: Pubkey,
+    stats: Pubkey,
 }
 
 fn try_send(svm: &mut MagicSVM, t: TransactionTarget, signers: &[&Keypair], i: Instruction) -> Result<(), String> {
@@ -169,6 +170,9 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
         scratchers::accounts::CreateSeries { config, series, stock_mint: mint, admin: a, system_program: sys }), "create_series");
     send(&mut svm, Base, &[&admin], ix(ix_data::FreezeSeries {},
         scratchers::accounts::FreezeSeries { config, series, admin: a }), "freeze_series");
+    let stats = pda(&[b"stats", &1u16.to_le_bytes()]);
+    send(&mut svm, Base, &[&admin], ix(ix_data::InitStats { series_id: 1 },
+        scratchers::accounts::InitStats { config, series, stats, admin: a, system_program: sys }), "init_stats");
     send(&mut svm, Base, &[&admin], ix(ix_data::InitVault {}, scratchers::accounts::InitVault {
         config, vault_state: vault, stock_mint: mint,
         vault_token: anchor_spl::associated_token::get_associated_token_address(&vault, &mint),
@@ -194,6 +198,13 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
             delegation_record_vault_state: delegation_record_pda_from_delegated_account(&vault),
             delegation_metadata_vault_state: delegation_metadata_pda_from_delegated_account(&vault),
             vault_state: vault, owner_program: owner, delegation_program: DelegationProgram::id(), system_program: sys }), "delegate_vault");
+    send(&mut svm, Base, &[&admin], ix(ix_data::DelegateStats { series_id: 1, validator: Some(validator) },
+        scratchers::accounts::DelegateStats {
+            config, admin: a,
+            buffer_stats: delegate_buffer_pda_from_delegated_account_and_owner_program(&stats, &owner),
+            delegation_record_stats: delegation_record_pda_from_delegated_account(&stats),
+            delegation_metadata_stats: delegation_metadata_pda_from_delegated_account(&stats),
+            stats, owner_program: owner, delegation_program: DelegationProgram::id(), system_program: sys }), "delegate_stats");
     send(&mut svm, Base, &[&admin], ix(ix_data::DelegateFeed { feed_id: FEED_ID, validator: Some(validator) },
         scratchers::accounts::DelegateFeed {
             config, admin: a,
@@ -202,7 +213,7 @@ fn setup(usdc_e6: u64, inventory_shares: u64, tiers: [Tier; 8]) -> Env {
             delegation_metadata_feed: delegation_metadata_pda_from_delegated_account(&feed),
             feed, owner_program: owner, delegation_program: DelegationProgram::id(), system_program: sys }), "delegate_feed");
 
-    let mut env = Env { svm, admin, user, session, pusher, mint, usdc, validator, player, vault, series, feed, config };
+    let mut env = Env { svm, admin, user, session, pusher, mint, usdc, validator, player, vault, series, feed, config, stats };
     push_price(&mut env, PRICE, NOW);
     edit_er_player(&mut env.svm, &player, |p| p.usdc_balance_e6 = usdc_e6);
     let sync = ix(ix_data::SyncInventory { added_shares: inventory_shares },
@@ -226,7 +237,7 @@ fn create_session(e: &mut Env, expiry: i64, cap: u64) {
 fn buy_ix(e: &Env, signer: &Keypair, n: u8, max_price: u64) -> Instruction {
     ix(ix_data::BuyCard { n, max_price, caller_seed: [9; 32] }, scratchers::accounts::BuyCard {
         signer: pk(&signer.pubkey()), authority: pk(&e.user.pubkey()), player: e.player, config: e.config,
-        series: e.series, vault_state: e.vault, price_feed: e.feed, oracle_queue: QUEUE,
+        series: e.series, vault_state: e.vault, stats: e.stats, price_feed: e.feed, oracle_queue: QUEUE,
         program_identity: pda(&[b"identity"]), vrf_program: VRF_PROGRAM, slot_hashes: SLOT_HASHES,
         system_program: system_program::ID })
 }
@@ -262,6 +273,8 @@ fn buy_ten_cards_get_ten_vrf_reveals() {
     let reserve_per = 1000 * 1_000_000u64 * 100_000_000 / PRICE as u64; // 1000x worst case
     assert_eq!(v.reserved_shares, 10 * reserve_per);
     assert_eq!(v.usdc_in_e6, 10_000_000);
+    let st: Stats = read(&e.svm, Ephemeral, &e.stats);
+    assert_eq!((st.cards_sold, st.tier_counts.iter().sum::<u64>()), (10, 0), "sold counted at buy, tiers only at reveal");
 
     let results = fulfill(&mut e.svm);
     assert_eq!(results.len(), 10);
@@ -284,6 +297,13 @@ fn buy_ten_cards_get_ten_vrf_reveals() {
     // Excess reservation released: only actual winnings remain reserved.
     let v: VaultState = read(&e.svm, Ephemeral, &e.vault);
     assert_eq!(v.reserved_shares, expected_shares);
+    // Public stats mirror the reveals exactly.
+    let st: Stats = read(&e.svm, Ephemeral, &e.stats);
+    let mut counts = [0u64; 8];
+    for c in &cards {
+        counts[c.tier as usize] += 1;
+    }
+    assert_eq!((st.cards_sold, st.tier_counts, st.shares_won), (10, counts, expected_shares));
 }
 
 #[test]
@@ -358,7 +378,7 @@ fn spoofed_callback_cannot_pick_the_outcome() {
     seed[0..8].copy_from_slice(&99_999u64.to_le_bytes());
     let spoof = ix(ix_data::VrfCallback { randomness: seed, card_id: card.id, request_id: card.vrf_request_id },
         scratchers::accounts::VrfCallback {
-            vrf_program_identity: pk(&user.pubkey()), player: e.player, series: e.series, vault_state: e.vault });
+            vrf_program_identity: pk(&user.pubkey()), player: e.player, series: e.series, vault_state: e.vault, stats: e.stats });
     let err = try_send(&mut e.svm, Ephemeral, &[&user], spoof).unwrap_err();
     assert!(err.contains("Custom(2012)"), "expected ConstraintAddress, got {err}"); // address constraint
     assert_eq!(read_player(&e.svm, Ephemeral, &e.player).cards[0].state, CardState::RandomnessPending as u8);
@@ -940,7 +960,19 @@ fn oracle_series_reads_live_layout_and_enforces_band_owner_and_freshness() {
     send(&mut e.svm, Base, &[&admin], create, "create oracle series");
     let freeze = ix(ix_data::FreezeSeries {}, scratchers::accounts::FreezeSeries { config: e.config, series: series2, admin: a });
     send(&mut e.svm, Base, &[&admin], freeze, "freeze");
-    (e.series, e.feed) = (series2, oracle_feed);
+    // every series has its own delegated Stats
+    let stats2 = pda(&[b"stats", &2u16.to_le_bytes()]);
+    let init = ix(ix_data::InitStats { series_id: 2 }, scratchers::accounts::InitStats { config: e.config, series: series2, stats: stats2, admin: a, system_program: system_program::ID });
+    send(&mut e.svm, Base, &[&admin], init, "init_stats 2");
+    let owner = scratchers::ID;
+    let del = ix(ix_data::DelegateStats { series_id: 2, validator: Some(e.validator) }, scratchers::accounts::DelegateStats {
+        config: e.config, admin: a,
+        buffer_stats: delegate_buffer_pda_from_delegated_account_and_owner_program(&stats2, &owner),
+        delegation_record_stats: delegation_record_pda_from_delegated_account(&stats2),
+        delegation_metadata_stats: delegation_metadata_pda_from_delegated_account(&stats2),
+        stats: stats2, owner_program: owner, delegation_program: DelegationProgram::id(), system_program: system_program::ID });
+    send(&mut e.svm, Base, &[&admin], del, "delegate_stats 2");
+    (e.series, e.feed, e.stats) = (series2, oracle_feed, stats2);
 
     let put = |e: &mut Env, price: i64, ts: i64, owner: Pubkey| {
         // ER accounts use litesvm's own Account type: borrow one as a template and overwrite its fields

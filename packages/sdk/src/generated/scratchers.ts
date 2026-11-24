@@ -194,6 +194,29 @@ export type Scratchers = {
           }
         },
         {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.id",
+                "account": "series"
+              }
+            ]
+          }
+        },
+        {
           "name": "priceFeed"
         },
         {
@@ -1023,6 +1046,224 @@ export type Scratchers = {
       ]
     },
     {
+      "name": "delegateStats",
+      "discriminator": [
+        185,
+        133,
+        115,
+        213,
+        221,
+        169,
+        0,
+        138
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "bufferStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                199,
+                50,
+                107,
+                147,
+                24,
+                27,
+                227,
+                68,
+                93,
+                220,
+                45,
+                187,
+                192,
+                4,
+                110,
+                180,
+                160,
+                182,
+                184,
+                39,
+                130,
+                166,
+                139,
+                78,
+                198,
+                94,
+                237,
+                174,
+                125,
+                236,
+                221,
+                71
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegationRecordStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "delegationMetadataStats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegationProgram"
+            }
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "seriesId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ownerProgram",
+          "address": "EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn"
+        },
+        {
+          "name": "delegationProgram",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seriesId",
+          "type": "u16"
+        },
+        {
+          "name": "validator",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
       "name": "delegateVault",
       "discriminator": [
         166,
@@ -1723,6 +1964,101 @@ export type Scratchers = {
         {
           "name": "ts",
           "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "initStats",
+      "discriminator": [
+        203,
+        189,
+        229,
+        174,
+        240,
+        190,
+        158,
+        110
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "series",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  114,
+                  105,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "seriesId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "seriesId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seriesId",
+          "type": "u16"
         }
       ]
     },
@@ -3262,6 +3598,80 @@ export type Scratchers = {
       "args": []
     },
     {
+      "name": "undelegateStats",
+      "discriminator": [
+        22,
+        11,
+        169,
+        185,
+        126,
+        54,
+        203,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "stats.series",
+                "account": "stats"
+              }
+            ]
+          }
+        },
+        {
+          "name": "magicProgram",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magicContext",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "undelegateVault",
       "discriminator": [
         189,
@@ -3381,6 +3791,29 @@ export type Scratchers = {
               {
                 "kind": "account",
                 "path": "series.stockMint",
+                "account": "series"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "series.id",
                 "account": "series"
               }
             ]
@@ -3580,6 +4013,19 @@ export type Scratchers = {
         77,
         250,
         162
+      ]
+    },
+    {
+      "name": "stats",
+      "discriminator": [
+        190,
+        125,
+        51,
+        63,
+        169,
+        197,
+        36,
+        238
       ]
     },
     {
@@ -4406,6 +4852,43 @@ export type Scratchers = {
           {
             "name": "priceE8",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "stats",
+      "docs": [
+        "Public per-series counters, delegated so `buy_card` / `vrf_callback` can update them on the rollup.",
+        "`tier_counts` is indexed like `Series.tiers`; `shares_won` is the reveal-time liability (before claim)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "series",
+            "type": "u16"
+          },
+          {
+            "name": "cardsSold",
+            "type": "u64"
+          },
+          {
+            "name": "tierCounts",
+            "type": {
+              "array": [
+                "u64",
+                8
+              ]
+            }
+          },
+          {
+            "name": "sharesWon",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

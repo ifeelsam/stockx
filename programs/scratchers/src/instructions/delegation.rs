@@ -139,3 +139,45 @@ pub fn undelegate_feed(ctx: Context<UndelegateFeed>) -> Result<()> {
     .build_and_invoke()?;
     Ok(())
 }
+
+// ---- Stats (admin-signed) ------------------------------------------------------------------
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(series_id: u16)]
+pub struct DelegateStats<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = admin @ ScratchError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    /// CHECK: the Stats PDA to delegate
+    #[account(mut, del, seeds = [b"stats", series_id.to_le_bytes().as_ref()], bump)]
+    pub stats: UncheckedAccount<'info>,
+}
+
+pub fn delegate_stats(ctx: Context<DelegateStats>, series_id: u16, validator: Option<Pubkey>) -> Result<()> {
+    ctx.accounts.delegate_stats(&ctx.accounts.admin, &[b"stats", series_id.to_le_bytes().as_ref()], cfg(validator))?;
+    Ok(())
+}
+
+#[commit]
+#[derive(Accounts)]
+pub struct UndelegateStats<'info> {
+    #[account(seeds = [b"config"], bump = config.bump, has_one = admin @ ScratchError::Unauthorized)]
+    pub config: Account<'info, Config>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    #[account(mut, seeds = [b"stats", stats.series.to_le_bytes().as_ref()], bump = stats.bump)]
+    pub stats: Account<'info, Stats>,
+}
+
+pub fn undelegate_stats(ctx: Context<UndelegateStats>) -> Result<()> {
+    MagicIntentBundleBuilder::new(
+        ctx.accounts.admin.to_account_info(),
+        ctx.accounts.magic_context.to_account_info(),
+        ctx.accounts.magic_program.to_account_info(),
+    )
+    .commit_and_undelegate(&[ctx.accounts.stats.to_account_info()])
+    .build_and_invoke()?;
+    Ok(())
+}

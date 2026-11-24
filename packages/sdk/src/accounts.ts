@@ -1,5 +1,5 @@
 import { PublicKey, type Connection } from "@solana/web3.js";
-import { playerPda } from "./pda.js";
+import { playerPda, statsPda } from "./pda.js";
 import type { ScratchersProgram } from "./program.js";
 
 export const CardState = { Empty: 0, Paid: 1, RandomnessPending: 2, Revealed: 3, ClaimRequested: 4, Settled: 5, Cancelled: 6 } as const;
@@ -43,3 +43,8 @@ export function subscribePrice(
   );
   return () => void rollup.removeAccountChangeListener(id);
 }
+
+export type StatsAccount = Awaited<ReturnType<ScratchersProgram["account"]["stats"]["fetch"]>>;
+/** Public per-series counters (read on the rollup connection while delegated). */
+export const fetchStats = (p: ScratchersProgram, seriesId: number, connection?: Connection) =>
+  p.account.stats.fetch(statsPda(seriesId), "confirmed");

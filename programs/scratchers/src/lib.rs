@@ -32,6 +32,12 @@ pub mod scratchers {
     pub fn init_feed(ctx: Context<InitFeed>, feed_id: [u8; 32], pusher: Pubkey, expo: i32, max_move_bps: u16) -> Result<()> {
         instructions::init_feed(ctx, feed_id, pusher, expo, max_move_bps)
     }
+    pub fn init_stats(ctx: Context<InitStats>, series_id: u16) -> Result<()> {
+        instructions::init_stats(ctx, series_id)
+    }
+    pub fn delegate_stats(ctx: Context<DelegateStats>, series_id: u16, validator: Option<Pubkey>) -> Result<()> {
+        instructions::delegate_stats(ctx, series_id, validator)
+    }
     pub fn signup(ctx: Context<Signup>) -> Result<()> {
         instructions::signup(ctx)
     }
@@ -74,6 +80,9 @@ pub mod scratchers {
     // ---- Ephemeral rollup ----
     pub fn undelegate_player(ctx: Context<UndelegatePlayer>) -> Result<()> {
         instructions::undelegate_player(ctx)
+    }
+    pub fn undelegate_stats(ctx: Context<UndelegateStats>) -> Result<()> {
+        instructions::undelegate_stats(ctx)
     }
     pub fn undelegate_vault(ctx: Context<UndelegateVault>) -> Result<()> {
         instructions::undelegate_vault(ctx)

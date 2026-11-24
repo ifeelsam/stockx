@@ -34,6 +34,8 @@ pub struct BuyCard<'info> {
     pub series: Account<'info, Series>,
     #[account(mut, seeds = [b"vault", series.stock_mint.as_ref()], bump = vault_state.bump)]
     pub vault_state: Account<'info, VaultState>,
+    #[account(mut, seeds = [b"stats", series.id.to_le_bytes().as_ref()], bump = stats.bump)]
+    pub stats: Account<'info, Stats>,
     /// CHECK: validated by `read_price` (address, owner, freshness, confidence)
     pub price_feed: UncheckedAccount<'info>,
     /// CHECK: must be the delegated ephemeral VRF queue
@@ -107,6 +109,8 @@ pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 
         }
     }
 
+    ctx.accounts.stats.cards_sold = ctx.accounts.stats.cards_sold.saturating_add(n as u64);
+
     for (i, (id, request_id)) in reqs.into_iter().enumerate() {
         let mut args = Vec::with_capacity(40);
         args.extend_from_slice(&id.to_le_bytes());
@@ -123,6 +127,7 @@ pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 
                     SerializableAccountMeta { pubkey: player_key, is_signer: false, is_writable: true },
                     SerializableAccountMeta { pubkey: ctx.accounts.series.key(), is_signer: false, is_writable: false },
                     SerializableAccountMeta { pubkey: ctx.accounts.vault_state.key(), is_signer: false, is_writable: true },
+                    SerializableAccountMeta { pubkey: ctx.accounts.stats.key(), is_signer: false, is_writable: true },
                 ]),
                 callback_args: Some(args),
             },
@@ -145,6 +150,8 @@ pub struct VrfCallback<'info> {
     pub series: Account<'info, Series>,
     #[account(mut, seeds = [b"vault", series.stock_mint.as_ref()], bump = vault_state.bump)]
     pub vault_state: Account<'info, VaultState>,
+    #[account(mut, seeds = [b"stats", series.id.to_le_bytes().as_ref()], bump = stats.bump)]
+    pub stats: Account<'info, Stats>,
 }
 
 pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u64, request_id: [u8; 32]) -> Result<()> {
@@ -166,6 +173,9 @@ pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u6
 
     let vault = &mut ctx.accounts.vault_state;
     vault.reserved_shares = vault.reserved_shares.saturating_sub(release);
+    let stats = &mut ctx.accounts.stats;
+    stats.tier_counts[tier] = stats.tier_counts[tier].saturating_add(1);
+    stats.shares_won = stats.shares_won.saturating_add(actual);
 
     card.seed = randomness;
     card.tier = tier as u8;

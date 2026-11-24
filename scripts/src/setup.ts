@@ -12,7 +12,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   configPda, connect, createSeriesIx, DEFAULT_TIERS, delegateFeedIx, delegateVaultIx, feedPda, freezeSeriesIx, getProgram, initConfigIx,
-  initFeedIx, initSellQuoteIx, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
+  initFeedIx, initSellQuoteIx, initStatsIx, delegateStatsIx, statsPda, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
 } from "@scratchers/sdk";
 import { exists, hex, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
@@ -77,6 +77,10 @@ async function main() {
     ], [admin], `create+freeze series ${s.id} ${s.label}`);
   }
 
+  for (const s of SERIES) {
+    if (!(await exists(base, statsPda(s.id)))) await send(base, [await initStatsIx(program, admin.publicKey, s.id)], [admin], `init_stats ${s.id}`);
+  }
+
   for (const sym of Object.keys(STOCKS)) {
     const mint = mints[sym];
     const vault = vaultPda(mint);
@@ -121,6 +125,10 @@ async function main() {
       await send(base, [await delegateVaultIx(program, admin.publicKey, mints[sym], c.validator)], [admin], `delegate_vault ${sym}`);
     if ((await base.getAccountInfo(feed))?.owner.equals(DELEGATION_PROGRAM) !== true)
       await send(base, [await delegateFeedIx(program, admin.publicKey, STOCKS[sym as Sym].feedId, c.validator)], [admin], `delegate_feed ${sym}`);
+  }
+  for (const s of SERIES) {
+    if ((await base.getAccountInfo(statsPda(s.id)))?.owner.equals(DELEGATION_PROGRAM) !== true)
+      await send(base, [await delegateStatsIx(program, admin.publicKey, s.id, c.validator)], [admin], `delegate_stats ${s.id}`);
   }
   for (const sym of Object.keys(STOCKS)) {
     const vault = vaultPda(mints[sym]);

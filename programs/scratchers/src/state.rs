@@ -114,6 +114,18 @@ pub fn usdc_for_sale(shares: u64, price_e8: u64) -> Option<u64> {
     u64::try_from(gross * (10_000 - SELL_SPREAD_BPS) / 10_000).ok()
 }
 
+/// Public per-series counters, delegated so `buy_card` / `vrf_callback` can update them on the rollup.
+/// `tier_counts` is indexed like `Series.tiers`; `shares_won` is the reveal-time liability (before claim).
+#[account]
+#[derive(InitSpace)]
+pub struct Stats {
+    pub series: u16,
+    pub cards_sold: u64,
+    pub tier_counts: [u64; 8],
+    pub shares_won: u64,
+    pub bump: u8,
+}
+
 /// Exactly-once payout receipt; PDA ["payout", player, card_id].
 #[account]
 #[derive(InitSpace)]
