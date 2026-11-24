@@ -168,9 +168,19 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     await signAndSend(c.rollup, signer, new Transaction().add(await depositUsdcIx(rollup, user, usdcMint, amount)), { skipPreflight: true });
   }, [baseUsdc, c, signer, user, usdcMint, validator, rollup]);
 
+  /** A fresh wallet has no SOL for rent/fees: ask the keeper faucet (SOL + mUSDC) before the first transaction. */
+  const ensureFunds = useCallback(async () => {
+    if ((await c.base.getBalance(user, "confirmed")) >= 100_000_000) return;
+    setStep("funding");
+    const r = await fetch(`${keeperUrl}/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet: user.toBase58() }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({ error: r.statusText }))).error ?? "faucet failed");
+    for (let i = 0; i < 20 && (await c.base.getBalance(user, "confirmed")) < 100_000_000; i++) await sleep(1000);
+  }, [c, user, keeperUrl]);
+
   const run = useCallback(async () => {
     setError(null);
     try {
+      await ensureFunds();
       let r = await check();
       if (r.step === "signup" || r.step === "delegate") {
         setStep(r.step);
@@ -197,7 +207,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [check, base, rollup, c, signer, user, validator, dep, sessionKey, deposit]);
+  }, [ensureFunds, check, base, rollup, c, signer, user, validator, dep, sessionKey, deposit]);
 
   // ---- game actions -------------------------------------------------------------------------------------
   const buy = useCallback(
