@@ -22,7 +22,7 @@ importers:
         version: 0.32.1(bufferutil@4.2.0)(typescript@5.9.3)(utf-8-validate@6.1.0)
       '@magicblock-labs/ephemeral-rollups-sdk':
         specifier: 0.18.0
-        version: 0.18.0(bufferutil@4.2.0)
+        version: 0.18.0(bufferutil@4.2.0)(utf-8-validate@6.1.0)
       '@solana/spl-token':
         specifier: ^0.4.15
         version: 0.4.15(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@5.9.3)(utf-8-validate@6.1.0))(bufferutil@4.2.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.1.0)
@@ -36,6 +36,18 @@ importers:
       '@types/bn.js':
         specifier: ^5.2.0
         version: 5.2.0
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/ui-tokens:
+    devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.5
@@ -835,7 +847,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@magicblock-labs/ephemeral-rollups-sdk@0.18.0(bufferutil@4.2.0)':
+  '@magicblock-labs/ephemeral-rollups-sdk@0.18.0(bufferutil@4.2.0)(utf-8-validate@6.1.0)':
     dependencies:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
