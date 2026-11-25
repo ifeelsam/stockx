@@ -12,6 +12,7 @@ import { env } from "./src/env";
 import { WalletProvider, useWallet } from "./src/lib/wallets";
 import { GameHost } from "./src/lib/GameHost";
 import { Banners } from "./src/components/Banners";
+import { Brand } from "./src/components/Logo";
 import { Login } from "./src/screens/Login";
 import { Play } from "./src/screens/Play";
 import { Portfolio } from "./src/screens/Portfolio";
@@ -43,7 +44,7 @@ function Shell() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.ink }}>
       <View style={[ui.row, { gap: 10, paddingHorizontal: 20, paddingVertical: 8 }]}>
-        <Text style={[ui.h2, { fontSize: 19, flex: 1 }]} numberOfLines={1}>ripStokx</Text>
+        <View style={{ flex: 1 }}><Brand size={20} /></View>
         <Pressable onPress={addFunds} disabled={funding} accessibilityLabel={`Balance ${money(g.usdc)}. Add 100 test USDC`} style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: "#3A3350", justifyContent: "center" }}>
           <Text style={[ui.mono, { fontFamily: font.monoBold }]}>{funding ? "adding…" : `${money(g.usdc)} +`}</Text>
         </Pressable>

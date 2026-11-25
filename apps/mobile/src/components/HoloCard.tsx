@@ -2,8 +2,9 @@ import { useEffect, useMemo } from "react";
 import { Text, View } from "react-native";
 import { Canvas, Circle, ColorMatrix, DashPathEffect, Group, LinearGradient, Oval, Paint, Path, Rect, RoundedRect, Skia, SweepGradient, rect, rrect, vec } from "@shopify/react-native-skia";
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { FINISH, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { FINISH, LOGO, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
 import { font } from "../theme";
+import { Wordmark } from "./Logo";
 
 const W = 286;
 const H = 408;
@@ -74,15 +75,17 @@ export function CardBack({ rarity = "dust", tease = false, width = W }: { rarity
             <Rect x={9} y={9} width={268} height={390} color="#2B1B5C" />
             <Path path={LATTICE} style="stroke" strokeWidth={2} color="rgba(157,243,255,0.10)" />
           </Group>
-          <Path path="M143 148 L185 190 L143 232 L101 190 Z" color="#0D0B14" />
-          <Path path="M143 148 L185 190 L143 232 L101 190 Z M143 166 L167 190 L143 214 L119 190 Z" style="stroke" strokeWidth={2.5} color="#9DF3FF" />
+          {/* the brand mark (viewBox x 10..54, y 0..60) at 1.8×, centred above the wordmark */}
+          <Group transform={[{ translateX: 143 - 32 * 1.8 }, { translateY: 126 }, { scale: 1.8 }]}>
+            <Path path={LOGO.top} color="#F2EFFA" />
+            <Path path={LOGO.bottom}>
+              <LinearGradient start={vec(12, 58)} end={vec(52, 21)} colors={[...LOGO.holo]} />
+            </Path>
+          </Group>
         </Group>
       </Canvas>
-      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 178 * k, alignItems: "center" }}>
-        <Text style={{ fontFamily: font.heavy, fontSize: 18 * k, color: "#F2EFFA" }}>rS</Text>
-      </View>
-      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 248 * k, alignItems: "center" }}>
-        <Text style={{ fontFamily: font.mono, fontSize: 11 * k, letterSpacing: 2 * k, color: "#C9C2E6" }}>ripStokx</Text>
+      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 252 * k, alignItems: "center" }}>
+        <Wordmark size={30 * k} />
       </View>
     </View>
   );

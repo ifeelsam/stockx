@@ -6,6 +6,7 @@ import { colors } from "@scratchers/ui-tokens";
 import { env } from "../env";
 import { ui } from "../theme";
 import { useWallet } from "../lib/wallets";
+import { Brand } from "../components/Logo";
 
 function PrivyLogin() {
   const [email, setEmail] = useState("");
@@ -51,8 +52,8 @@ export function Login() {
   );
   return (
     <View style={[ui.screen, ui.pad, { justifyContent: "center", gap: 18 }]}>
-      <View>
-        <Text style={{ color: colors.gold, fontWeight: "700", letterSpacing: 2, fontSize: 12 }}>ENTERTAINMENT × FINANCE</Text>
+      <View style={{ gap: 18 }}>
+        <Brand size={34} />
         <Text style={[ui.h1, { fontSize: 38, lineHeight: 42 }]}>Rip a $1 pack.{"\n"}<Text style={{ color: colors.money }}>Pull real stock.</Text></Text>
       </View>
       {!w.ready ? <ActivityIndicator color={colors.money} /> : (

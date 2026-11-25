@@ -118,6 +118,19 @@ export const SYMBOL_PATHS: Record<string, string> = {
   fish: "M3 12c3-5 9-6 14-2l4-3v10l-4-3c-5 4-11 3-14-2zM7.5 11.5h.01",
 };
 
+// ---- brand mark: a card torn along a rising price line ("rip" + "stock") -------------------------------
+
+export const LOGO = {
+  viewBox: "10 0 44 60",
+  /** width ÷ height of the viewBox */
+  ratio: 44 / 60,
+  /** the torn-off top, in card white */
+  top: "M12 11A9 9 0 0 1 21 2H43A9 9 0 0 1 52 11V13L44 21L38 17L28 29L21 25L12 34Z",
+  /** the rest of the card, in the holo gradient (bottom-left to top-right) */
+  bottom: "M12 42L21 33L28 37L38 25L44 29L52 21V49A9 9 0 0 1 43 58H21A9 9 0 0 1 12 49Z",
+  holo: ["#FF6EC7", "#B18CFF", "#9DF3FF"],
+} as const;
+
 // ---- holo card + pack finishes (design canvas "B · Holo cards"); used by web and mobile -------------
 
 export type CardFinish = {
