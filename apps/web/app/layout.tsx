@@ -6,7 +6,7 @@ import { Nav } from "@/components/Nav";
 import { Banners } from "@/components/Banners";
 
 export const metadata: Metadata = {
-  title: "Stock Scratchers: rip packs, keep tokenized stock",
+  title: "ripStokx: rip packs, keep tokenized stock",
   description: "Rip a holo pack with USDC and keep the tokenized stock inside, from Dust to a 1,000× Grail. Provably fair via MagicBlock VRF. Devnet demo.",
 };
 export const viewport: Viewport = { themeColor: "#0D0B14" };

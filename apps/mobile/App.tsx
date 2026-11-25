@@ -43,7 +43,7 @@ function Shell() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.ink }}>
       <View style={[ui.row, { gap: 10, paddingHorizontal: 20, paddingVertical: 8 }]}>
-        <Text style={[ui.h2, { fontSize: 19, flex: 1 }]} numberOfLines={1}>Stock Scratchers</Text>
+        <Text style={[ui.h2, { fontSize: 19, flex: 1 }]} numberOfLines={1}>ripStokx</Text>
         <Pressable onPress={addFunds} disabled={funding} accessibilityLabel={`Balance ${money(g.usdc)}. Add 100 test USDC`} style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: "#3A3350", justifyContent: "center" }}>
           <Text style={[ui.mono, { fontFamily: font.monoBold }]}>{funding ? "adding…" : `${money(g.usdc)} +`}</Text>
         </Pressable>

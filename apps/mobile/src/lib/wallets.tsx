@@ -47,7 +47,7 @@ function useSeeker() {
     (async () => {
       try {
         // identity.uri must be an absolute https URL: the Seeker wallet can end the session for custom schemes
-        await SeekerConnect.configure({ identity: { name: "Stock Scratchers", uri: "https://stockscratchers.app", icon: "favicon.ico" }, chain: "solana:devnet" });
+        await SeekerConnect.configure({ identity: { name: "ripStokx", uri: "https://stockscratchers.app", icon: "favicon.ico" }, chain: "solana:devnet" });
         setAvailability(await SeekerConnect.walletAvailability());
         const restored = await SeekerConnect.restore();
         if (restored?.accounts[0]) setAddress(restored.accounts[0].address);

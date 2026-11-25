@@ -79,10 +79,10 @@ export function CardBack({ rarity = "dust", tease = false, width = W }: { rarity
         </Group>
       </Canvas>
       <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 178 * k, alignItems: "center" }}>
-        <Text style={{ fontFamily: font.heavy, fontSize: 18 * k, color: "#F2EFFA" }}>SS</Text>
+        <Text style={{ fontFamily: font.heavy, fontSize: 18 * k, color: "#F2EFFA" }}>rS</Text>
       </View>
       <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 248 * k, alignItems: "center" }}>
-        <Text style={{ fontFamily: font.mono, fontSize: 11 * k, letterSpacing: 2 * k, color: "#C9C2E6" }}>STOCK SCRATCHERS</Text>
+        <Text style={{ fontFamily: font.mono, fontSize: 11 * k, letterSpacing: 2 * k, color: "#C9C2E6" }}>ripStokx</Text>
       </View>
     </View>
   );

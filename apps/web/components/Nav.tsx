@@ -32,7 +32,7 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-8">
-        <Link href="/" className="text-[22px] font-extrabold tracking-tight">Stock Scratchers</Link>
+        <Link href="/" className="text-[22px] font-extrabold tracking-tight">ripStokx</Link>
         <nav aria-label="Main" className="order-3 flex w-full justify-center gap-1 sm:order-none sm:w-auto">
           {LINKS.map(([h, l]) => (
             <Link key={h} href={h} aria-current={active(h) ? "page" : undefined} className={`flex min-h-11 items-center rounded-full px-4 text-[15px] ${active(h) ? "bg-text font-extrabold text-ink" : "font-semibold text-[#C9C2E6]"}`}>

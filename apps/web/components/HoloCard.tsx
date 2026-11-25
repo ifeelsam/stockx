@@ -81,9 +81,9 @@ export function CardBack({ rarity = "dust", tease = false, width = 286 }: { rari
           <svg aria-hidden="true" width="92" height="92" viewBox="0 0 92 92">
             <path d="M46 4 L88 46 L46 88 L4 46 Z" fill="#0D0B14" stroke="#9DF3FF" strokeWidth="3" />
             <path d="M46 22 L70 46 L46 70 L22 46 Z" fill="none" stroke="#9DF3FF" strokeWidth="2" />
-            <text x="46" y="53" textAnchor="middle" fontWeight="800" fontSize="20" fill="#F2EFFA">SS</text>
+            <text x="46" y="53" textAnchor="middle" fontWeight="800" fontSize="20" fill="#F2EFFA">rS</text>
           </svg>
-          <span className="num text-[11px] tracking-[2px] text-[#C9C2E6]">STOCK SCRATCHERS</span>
+          <span className="num text-[11px] tracking-[2px] text-[#C9C2E6]">ripStokx</span>
         </div>
       </div>
     </Scaled>
