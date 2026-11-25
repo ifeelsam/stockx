@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buyCardIx, CardState, fetchStats, fetchSellQuote, sell, signerFrom, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs,
-  depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, seriesPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc,
+  depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, seriesPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc, ACTION_ESCROW_LAMPORTS,
 } from "@scratchers/sdk";
 import { exists, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
@@ -56,7 +56,7 @@ async function main() {
 
   // 2. signup (Player + fee reserve), stock ATA, delegate Player, action-escrow top-up
   await send(c.base, [await signupIx(base, user.publicKey), createStockAtaIx(user.publicKey, user.publicKey, stock)], [user], "signup + stock ata");
-  await send(c.base, [await delegatePlayerIx(base, user.publicKey, c.validator), topUpActionEscrowIx(user.publicKey, playerPda(user.publicKey), 10_000_000n)], [user], "delegate player + escrow top-up");
+  await send(c.base, [await delegatePlayerIx(base, user.publicKey, c.validator), topUpActionEscrowIx(user.publicKey, playerPda(user.publicKey), ACTION_ESCROW_LAMPORTS)], [user], "delegate player + escrow top-up");
 
   // 3. USDC → rollup (eSPL), treasury (one-time), in-app balance
   await send(c.base, await depositToRollupIxs(user.publicKey, usdc, 50_000_000n, c.validator, user.publicKey), [user], "delegateSpl 50 mUSDC");

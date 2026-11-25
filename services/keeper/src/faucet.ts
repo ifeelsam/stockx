@@ -4,7 +4,7 @@ import type { Deployments } from "./config.js";
 import { Cooldown } from "./ratelimit.js";
 import { sendIx } from "./tx.js";
 
-// Onboarding rents a 3.7 KB Player (~0.02 SOL), a 0.01 SOL commit-fee reserve, a 0.01 SOL action escrow, token accounts and fees.
+// Onboarding rents a 3.7 KB Player (~0.02 SOL), a 0.01 SOL commit-fee reserve, a 0.05 SOL action escrow, token accounts and fees.
 const SOL_DRIP = 150_000_000; // 0.15 SOL
 const SOL_MIN = 100_000_000; // top up wallets below 0.1 SOL
 const USDC_DRIP = 100_000_000n; // 100 mUSDC (6 dp): every new account starts with this, and can ask again after the cooldown

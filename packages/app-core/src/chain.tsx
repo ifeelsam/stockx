@@ -11,7 +11,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
   buyCardIx, CardState, claimAllIx, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
-  fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
+  ACTION_ESCROW_LAMPORTS, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
   type Signer, type SessionKeySigner,
 } from "@scratchers/sdk";
 import { cardArt } from "@scratchers/sdk/pure";
@@ -192,7 +192,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
           tx.add(await signupIx(base, user));
           for (const s of STOCKS) tx.add(createStockAtaIx(user, user, new PublicKey(dep.mints[s])));
         }
-        tx.add(await delegatePlayerIx(base, user, validator), topUpActionEscrowIx(user, playerPda(user), 10_000_000n));
+        tx.add(await delegatePlayerIx(base, user, validator), topUpActionEscrowIx(user, playerPda(user), ACTION_ESCROW_LAMPORTS));
         await signAndSend(c.base, signer, tx);
         for (let i = 0; i < 30 && !(await c.rollup.getAccountInfo(playerPda(user))); i++) await sleep(1000);
         r = await check();

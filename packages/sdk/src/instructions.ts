@@ -156,7 +156,10 @@ export const syncInventoryIx = (p: ScratchersProgram, authority: PublicKey, stoc
 export const createStockAtaIx = (payer: PublicKey, owner: PublicKey, stockMint: PublicKey) =>
   createAssociatedTokenAccountIdempotentInstruction(payer, getAssociatedTokenAddressSync(stockMint, owner), owner, stockMint);
 
-/** Base layer: fund the escrow that pays the Payout receipt rent for post-commit actions (~0.0011 SOL per card). */
+/** Every card (Dust included) rents a ~0.0008 SOL Payout receipt, so this covers about 60 cards; after that the keeper repairs payouts. */
+export const ACTION_ESCROW_LAMPORTS = 50_000_000n;
+
+/** Base layer: fund the escrow that pays the Payout receipt rent for post-commit actions. */
 export const topUpActionEscrowIx = (payer: PublicKey, player: PublicKey, lamports: bigint) =>
   createTopUpEscrowInstruction(escrowPda(player), player, payer, lamports, 255);
 
