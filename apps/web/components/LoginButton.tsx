@@ -12,16 +12,16 @@ export function LoginButton() {
 function PrivyLogin() {
   const { ready, authenticated, login, logout } = usePrivy();
   const { wallets } = useWallets();
-  if (!ready) return <span className="h-8 w-20 rounded-lg shimmer" />;
+  if (!ready) return <span className="shim h-11 w-20 rounded-full bg-surface" />;
   if (!authenticated)
     return (
-      <button onClick={login} className="rounded-lg bg-money px-3 py-1.5 text-sm font-semibold text-ink hover:brightness-110">
+      <button onClick={login} className="min-h-11 rounded-full border border-accent px-4 text-sm font-extrabold text-accent">
         Log in
       </button>
     );
   const addr = wallets[0]?.address;
   return (
-    <button onClick={logout} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-surface-hi" title="Log out">
+    <button onClick={logout} className="min-h-11 rounded-full border border-[#3A3350] px-3.5 text-[13px]" title="Log out">
       <span className="num">{addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : "wallet…"}</span>
     </button>
   );

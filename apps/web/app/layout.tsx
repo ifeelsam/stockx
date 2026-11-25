@@ -18,9 +18,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <Nav />
           <Banners />
-          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-          <footer className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-xs text-dim">
-            Devnet demo. Mock tokens only, no real money. Every pack holds tokenized stock; prices are relayed by our keeper (a trust assumption, see README).
+          <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8">{children}</main>
+          <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-xs text-dim sm:px-8">
+            Devnet demo. Mock tokens only, no real money. Every pack holds tokenized stock; prices are relayed by our keeper (a trust assumption, see README).{" "}
+            <a href="/prizes" className="underline">Odds</a> · <a href="/dashboard" className="underline">Stats</a>
           </footer>
         </Providers>
       </body>

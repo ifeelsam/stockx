@@ -1,101 +1,100 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
-import { TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
-import { Symbol } from "@/components/Symbol";
+import { FINISH, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
+import { isPaused, useGame, VISIBLE_SERIES } from "@scratchers/app-core";
+import { multiplierOf, rtp, totalWeight, DEFAULT_TIERS } from "@scratchers/sdk";
+import { HoloCard } from "@/components/HoloCard";
+import { HoloPack } from "@/components/HoloPack";
+import { cardUsd, money } from "@/lib/cards";
 
-const HERO = ["dice", "bull", "leaf", "wave", "bull", "moon", "key", "bull", "cloud"];
+const oddsText = (weight: number, total: number) => (weight / total > 0.5 ? `~${Math.round((weight / total) * 100)}%` : `1 in ${Math.round(total / weight).toLocaleString("en-US")}`);
 
-export default function Landing() {
+/** Packs: choose a pack, see what is inside. */
+export default function Packs() {
+  const g = useGame();
+  const [picked, setPicked] = useState(0);
+  const cur = VISIBLE_SERIES[picked];
+  const paused = isPaused(g, cur.feed);
+  const total = totalWeight(cur.tiers);
   return (
-    <div className="space-y-16 py-8">
-      <div className="grid items-center gap-12 lg:grid-cols-2">
-        <div>
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-accent">Entertainment × Finance</p>
-          <h1 className="text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl">
+    <div className="space-y-16 py-4">
+      <section className="flex flex-wrap items-center gap-10">
+        <div className="flex min-w-0 flex-[1_1_360px] flex-col gap-5">
+          <h1 className="text-6xl font-extrabold leading-[0.95] tracking-[-0.04em] sm:text-7xl">
             Rip a pack.
             <br />
-            <span className="text-money">Keep the stock.</span>
+            Pull real stock.
           </h1>
-          <p className="mt-5 max-w-md text-lg text-dim">
-            A $1 holo pack pays <span className="text-text">tokenized stock</span>: from 20¢ of Dust to a 1,000× Grail. Every result is set by on-chain VRF against a frozen public table. Anyone can recompute it.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/play" className="rounded-xl bg-money px-6 py-3.5 font-bold text-ink hover:brightness-110">
-              Rip a pack
-            </Link>
-            <Link href="/prizes" className="rounded-xl border border-line px-6 py-3.5 font-semibold hover:bg-surface-hi">
-              See the odds
-            </Link>
+          <p className="max-w-md text-lg text-[#C9C2E6]">Every card holds tokenized {cur.feed === "TSLA" ? "Tesla" : cur.feed} stock. Its rarity sets how much: from 20¢ of Dust up to a 1,000× Grail. Devnet demo, mock tokens only.</p>
+          <div className="flex flex-wrap gap-2.5">
+            {paused ? (
+              <span className="flex min-h-14 items-center rounded-[14px] border border-dashed border-accent px-6 font-extrabold text-accent">Price paused · waiting for a fresh price</span>
+            ) : (
+              <>
+                <Link href={`/play?s=${cur.id}&n=10`} className="btn-primary min-h-14 px-7 text-lg">Rip {cur.feed} · {money(cur.ticketUsd * 10)}</Link>
+                <Link href={`/play?s=${cur.id}&n=1`} className="btn-ghost min-h-14 px-5">1 card · {money(cur.ticketUsd)}</Link>
+              </>
+            )}
           </div>
-          <ul className="mt-10 grid max-w-md grid-cols-3 gap-4 text-sm">
-            {[["75.37%", "RTP, public"], ["24%", "pay ≥ $1"], ["0 fees", "gasless plays"]].map(([a, b]) => (
-              <li key={a}>
-                <div className="num text-xl font-bold">{a}</div>
-                <div className="text-dim">{b}</div>
-              </li>
-            ))}
-          </ul>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30, rotate: -5 }}
-          animate={{ opacity: 1, y: 0, rotate: -2 }}
-          whileHover={{ rotate: 0, scale: 1.015 }}
-          transition={{ type: "spring", stiffness: 120, damping: 14 }}
-          className="relative mx-auto w-full max-w-[360px]"
-        >
-          <div className="card-stock relative overflow-hidden rounded-[28px] border-[3px] p-5 shadow-[0_30px_100px_rgba(247,212,92,0.18)]" style={{ borderColor: TIERS.grail.color }}>
-            <span className="holo-sheen" style={{ opacity: 0.55 }} />
-            <div className="relative flex items-start justify-between">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.22em] opacity-55">Stock Scratchers</div>
-                <div className="mt-1 text-3xl font-extrabold leading-none tracking-tight" style={{ color: TIERS.grail.color }}>Grail</div>
-              </div>
-              <div className="num text-right text-[10px] uppercase leading-tight opacity-60">mTSLA<br />1,000×</div>
-            </div>
-            <div className="relative mt-5 grid grid-cols-3 gap-2">
-              {HERO.map((s, i) => {
-                const hit = s === "bull";
-                return (
-                  <div key={i} className="flex aspect-square items-center justify-center rounded-xl border" style={hit ? { outline: `1.5px solid ${TIERS.grail.color}`, borderColor: "transparent", background: `${TIERS.grail.color}22` } : { borderColor: "rgba(23,19,32,0.10)", background: "rgba(23,19,32,0.045)" }}>
-                    <Symbol name={s} size={44} color={hit ? TIERS.grail.color : "#6E687A"} glow={hit} />
+        <div className="flex min-w-0 flex-[1_1_480px] flex-col items-center gap-5 overflow-x-clip">
+          {/* fixed-width row, scaled down on phones so both packs stay on screen */}
+          <div className="flex h-[300px] w-[470px] shrink-0 origin-bottom scale-[0.76] items-end justify-center sm:h-[390px] sm:scale-100">
+            {VISIBLE_SERIES.map((s, i) => {
+              const rel = i - picked;
+              const on = rel === 0;
+              return (
+                <button
+                  key={s.id}
+                  aria-pressed={on}
+                  aria-label={`Choose the ${s.name}`}
+                  onClick={() => setPicked(i)}
+                  className="-mx-2 origin-bottom transition-[transform,opacity] duration-300"
+                  style={{ transform: `translateY(${on ? 0 : 18}px) rotate(${rel * -6}deg) scale(${on ? 1.1 : 0.86})`, opacity: on ? 1 : 0.6, zIndex: on ? 2 : 1 }}
+                >
+                  <div className={on ? "bob" : ""}>
+                    <HoloPack feed={s.feed} demo={s.demo} paused={isPaused(g, s.feed)} offset={rel * 0.6} />
                   </div>
-                );
-              })}
-            </div>
-            <div className="relative mt-5 flex items-end justify-between border-t border-black/10 pt-3">
-              <div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-45">You keep</div>
-                <div className="num text-lg font-bold" style={{ color: TIERS.grail.color }}>2.4248 mTSLA</div>
-              </div>
-              <div className="num text-[10px] tracking-[0.18em] opacity-45">$1,000.00</div>
-            </div>
+                </button>
+              );
+            })}
           </div>
-        </motion.div>
-      </div>
+          <div role="group" aria-label="Choose a pack" className="flex gap-2">
+            {VISIBLE_SERIES.map((s, i) => (
+              <button key={s.id} aria-pressed={i === picked} onClick={() => setPicked(i)} className="chip">
+                {s.demo ? "DEMO ODDS" : s.feed}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section>
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Eight rarities. No blanks.</h2>
-            <p className="text-sm text-dim">Every pack holds stock. Dust returns 20¢; it is not a win, and we never dress it up as one.</p>
-          </div>
-          <Link href="/prizes" className="hidden text-sm text-accent hover:underline sm:block">Full table →</Link>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-3xl font-extrabold tracking-tight">What's inside a {cur.feed} pack</h2>
+          <span className="num text-xs text-dim">{cur.demo ? "DEMO ODDS · not the real table" : `most cards are Dust (20¢ back) · ${(rtp(DEFAULT_TIERS) * 100).toFixed(3)}% returned on average`}</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {TIER_KEYS.map((k) => {
-            const t = TIERS[k];
-            const dust = k === "dust";
+        <ul className="flex gap-4 overflow-x-auto pb-2 pt-5">
+          {TIER_KEYS.map((k, i) => {
+            const mult = `${multiplierOf(cur.tiers[i]).toLocaleString("en-US")}×`;
+            const odds = oddsText(cur.tiers[i].weight, total);
             return (
-              <div key={k} className="rounded-2xl border border-line bg-surface p-3" style={{ borderColor: dust ? undefined : `${t.color}55` }}>
-                <Symbol name={t.symbol} size={26} color={dust ? "#8B8798" : t.color} />
-                <div className="mt-2 text-sm font-bold" style={{ color: dust ? "#9A93AE" : t.color }}>{t.label}</div>
-                <div className="num text-xs text-dim">{t.payout}</div>
-              </div>
+              <li key={k} className="flex flex-none flex-col gap-2">
+                <HoloCard feed={cur.feed} rarity={k} mult={mult} usd={cardUsd(multiplierOf(cur.tiers[i]) * cur.ticketUsd)} shares={odds} serial="——" tilt={(0.15 + i * 0.12) % 1} width={160} />
+                <span className="font-extrabold" style={{ color: FINISH[k] && TIERS[k].color }}>{TIERS[k].label} {mult}</span>
+                <span className="num -mt-1.5 text-[11px] text-dim">{odds}</span>
+              </li>
             );
           })}
-        </div>
+        </ul>
+      </section>
+
+      <section className="flex flex-col items-start gap-3 rounded-[18px] border border-line p-6">
+        <h2 className="text-2xl font-extrabold tracking-tight">Every pull is provable</h2>
+        <p className="max-w-2xl text-[15px] leading-6 text-[#C9C2E6]">Each card's rarity comes from MagicBlock VRF against a table frozen on chain before the first pack sells. Flip any card to its back and redo the sum yourself: the seed, the roll, and the band it landed in.</p>
+        <Link href="/verify" className="btn-ghost">Check a card →</Link>
       </section>
     </div>
   );

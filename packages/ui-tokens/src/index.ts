@@ -6,17 +6,17 @@
 
 export const colors = {
   ink: "#0D0B14",
-  surface: "#15121F",
-  surfaceHi: "#1D1929",
-  line: "#2C2739",
+  surface: "#1B1726",
+  surfaceHi: "#241F33",
+  line: "#2A2539",
   text: "#F2EFFA",
-  textDim: "#9A93AE",
+  textDim: "#A9A3BC",
   card: "#F2EFFA", // holo card stock
   cardInk: "#171320",
   accent: "#9DF3FF",
-  money: "#6EF7A8", // wins, balances
-  gold: "#F7D45C", // Grail / brand accent
-  danger: "#FF6B7A",
+  money: "#9DF3FF", // gains, balances (the design uses the accent)
+  gold: "#FFD84D", // Grail / brand accent
+  danger: "#FF8A7A",
   warn: "#FFB547",
   foil: "#1A1626", // pack/foil base
   foilHi: "#2A2438",
@@ -43,14 +43,14 @@ export type TierStyle = {
 };
 
 export const TIERS: Record<TierKey, TierStyle> = {
-  dust: { key: "dust", label: "Dust", color: "#8B8798", glow: "#4A4557", symbol: "leaf", fx: "none", payout: "20¢ back" },
-  common: { key: "common", label: "Common", color: "#9DF3FF", glow: "#5BD8EA", symbol: "coin", fx: "glow", payout: "money back" },
-  uncommon: { key: "uncommon", label: "Uncommon", color: "#6EF7A8", glow: "#2BCB7C", symbol: "bolt", fx: "burst", payout: "2×" },
-  rare: { key: "rare", label: "Rare", color: "#6C8CFF", glow: "#3F63FF", symbol: "star", fx: "burst", payout: "5×" },
-  epic: { key: "epic", label: "Epic", color: "#C084FC", glow: "#9B4DFF", symbol: "gem", fx: "burst", payout: "10×" },
-  legend: { key: "legend", label: "Legend", color: "#FF7AD1", glow: "#FF3DB8", symbol: "crown", fx: "shake", payout: "50×" },
-  mythic: { key: "mythic", label: "Mythic", color: "#FFA64D", glow: "#FF7A1A", symbol: "rocket", fx: "shake", payout: "100×" },
-  grail: { key: "grail", label: "Grail", color: "#F7D45C", glow: "#FFD76A", symbol: "bull", fx: "jackpot", payout: "1,000×" },
+  dust: { key: "dust", label: "Dust", color: "#8F88A6", glow: "#6F6A80", symbol: "leaf", fx: "none", payout: "20¢ back" },
+  common: { key: "common", label: "Common", color: "#B4AEC6", glow: "#8D879F", symbol: "coin", fx: "glow", payout: "money back" },
+  uncommon: { key: "uncommon", label: "Uncommon", color: "#7BD88F", glow: "#3E8F55", symbol: "bolt", fx: "burst", payout: "2×" },
+  rare: { key: "rare", label: "Rare", color: "#4FC3F7", glow: "#2596CE", symbol: "star", fx: "burst", payout: "5×" },
+  epic: { key: "epic", label: "Epic", color: "#B18CFF", glow: "#7B4DFF", symbol: "gem", fx: "burst", payout: "10×" },
+  legend: { key: "legend", label: "Legend", color: "#FF9F43", glow: "#E07C1C", symbol: "crown", fx: "shake", payout: "50×" },
+  mythic: { key: "mythic", label: "Mythic", color: "#FF5C8A", glow: "#E0356A", symbol: "rocket", fx: "shake", payout: "100×" },
+  grail: { key: "grail", label: "Grail", color: "#FFD84D", glow: "#C99A1A", symbol: "bull", fx: "jackpot", payout: "1,000×" },
 };
 
 export const tierByIndex = (i: number): TierStyle => TIERS[TIER_KEYS[i] ?? "dust"];
@@ -116,4 +116,36 @@ export const SYMBOL_PATHS: Record<string, string> = {
   flame: "M12 22c4 0 7-2.7 7-7 0-4-3-6-4-10-3 2-4 4-4 6-1.5-1-2-2-2-3-2 2-4 4-4 7 0 4.3 3 7 7 7z",
   wave: "M2 9c3-3 5 3 8 0s5 3 8 0 3 0 4 0M2 15c3-3 5 3 8 0s5 3 8 0 3 0 4 0",
   fish: "M3 12c3-5 9-6 14-2l4-3v10l-4-3c-5 4-11 3-14-2zM7.5 11.5h.01",
+};
+
+// ---- holo card + pack finishes (design canvas "B · Holo cards"); used by web and mobile -------------
+
+export type CardFinish = {
+  /** solid frame colour (first stop where the web draws a gradient) */
+  frame: string;
+  /** holo opacity inside the art window / over the whole card (0 = matte) */
+  holo: number;
+  cardHolo: number;
+  /** full-bleed art behind the text (Mythic, Grail) */
+  full: boolean;
+  filledBadge: boolean;
+  sparkle: boolean;
+};
+
+export const FINISH: Record<TierKey, CardFinish> = {
+  dust: { frame: "#24202F", holo: 0, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
+  common: { frame: "#3A3550", holo: 0, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
+  uncommon: { frame: "#3E8F55", holo: 0.2, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
+  rare: { frame: "#4FC3F7", holo: 0.7, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
+  epic: { frame: "#7B4DFF", holo: 0.85, cardHolo: 0.18, full: false, filledBadge: true, sparkle: false },
+  legend: { frame: "#FF9F43", holo: 0.9, cardHolo: 0.32, full: false, filledBadge: true, sparkle: false },
+  mythic: { frame: "#FF6EC7", holo: 0.95, cardHolo: 0.22, full: true, filledBadge: true, sparkle: false },
+  grail: { frame: "#FFD84D", holo: 1, cardHolo: 0.25, full: true, filledBadge: true, sparkle: true },
+};
+
+export type StockLook = { symbol: string; company: string; packName: string; pack: string; art: string };
+export const STOCK_LOOK: Record<"TSLA" | "NVDA" | "SOL", StockLook> = {
+  TSLA: { symbol: "TSLA", company: "Tesla", packName: "Tesla", pack: "#FF5B2E", art: "#FF5B2E" },
+  NVDA: { symbol: "NVDA", company: "Nvidia", packName: "Nvidia", pack: "#1FAF6A", art: "#1FAF6A" },
+  SOL: { symbol: "SOL", company: "Solana", packName: "Solana \u00b7 24/7", pack: "#8F6BFF", art: "#5B3FA8" },
 };

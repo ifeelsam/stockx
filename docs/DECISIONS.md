@@ -66,3 +66,11 @@
 ## 2026-11-26: 100k CU per payout action so a full claim batch fits the validator's intent limit
 - Finding: on live devnet (validator core 2.0.5) `claim_all` of 8 cards failed with `0xA0000002` (INTENT_TOO_LARGE). `core/src/intent/limits.rs` caps a settlement stage at 1,400,000 CU (120k per committed account + each action's requested CU + 1k). We requested 200k per action: 1.72M. Earlier runs never claimed more than a few winners, and MagicSVM does not model this limit.
 - Decision: request 100,000 CU per `pay_out_action` (measured use 25-32k) and keep the batch at 8; a compile-time assert guards the product. Action fee halves to 5,000 lamports per card.
+
+## 2026-11-26: Web follows the Holo design canvas, with these deviations
+- Correct canvas link is `claude.ai/artifact/61kjPFuKgZfocfo95Pw879` (an earlier pass used a mistyped link and built from text only).
+- Not built from the mockups: the "Just pulled" feed and "everyone just saw your pull" (no live feed exists, so both would be invented); "Market closed, opens 8 pm IST" (owner chose no market-hours pause: the pack says "Price paused" only when the feed is stale); the "Blank" card branch (the plan has no blanks); "Send to wallet" (shares already sit in the player's wallet).
+- Tearing the seal **is** the buy, so the price is printed on the control. Tap and Enter also rip.
+- Routes stay `/play`, `/portfolio`, `/verify`; the nav labels them Packs, Binder, Proof. Odds and Stats are footer links.
+- The binder's rarity slots come from the Player account's 32 card slots (settled cards stay until a later buy reuses them). A full history needs an event indexer.
+- Pack art shows the ticker as text, no company logos.

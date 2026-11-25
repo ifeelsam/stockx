@@ -18,7 +18,7 @@
 **Open: per-card cost.** Each payout rents a receipt (772,160 lamports) plus a 5,000-lamport action fee, paid from the player's side; at an assumed $150/SOL that is about 12¢ against a 24.6¢ edge on a $1 ticket. VRF on the ephemeral queue is free. Needs receipt rent reclaim or a price change before any mainnet use.
 
 **Still to do before calling the refactor shipped**
-- Finish matching the design canvas (web, then mobile).
+- Match the design canvas on mobile (web done 2026-11-26: Packs, tear-to-rip, flip grid, Grail screen, Binder, Proof; checked in a headless browser on the mock backend at 1440 and 390 wide, no console errors).
 - Restart the keeper so payout repair knows series 11–14.
 - Device pass on the mobile holo flip (Seeker/emulator) and a browser pass of web `/play` (both currently typecheck only).
 - Update ARCHITECTURE.md if any diagram still says “scratch”.

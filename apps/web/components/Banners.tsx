@@ -16,7 +16,7 @@ export function Banners() {
   if (settling) list.push({ key: "set", tone: "info", text: `Settling ${settling} payout${settling > 1 ? "s" : ""} on Solana…` });
   const cls = { info: "bg-surface-hi text-text", warn: "bg-warn/15 text-warn", bad: "bg-danger/15 text-danger" };
   return (
-    <div className="sticky top-14 z-30">
+    <div className="relative z-30">
       <AnimatePresence initial={false}>
         {list.map((b) => (
           <motion.div key={b.key} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`overflow-hidden text-center text-sm ${cls[b.tone]}`}>

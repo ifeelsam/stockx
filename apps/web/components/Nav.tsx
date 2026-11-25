@@ -1,45 +1,54 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useGame } from "@scratchers/app-core";
 import { LoginButton } from "./LoginButton";
+import { money } from "@/lib/cards";
 
 const LINKS = [
-  ["/play", "Play"],
-  ["/portfolio", "Portfolio"],
-  ["/prizes", "Prizes"],
-  ["/verify", "Verify"],
-  ["/dashboard", "Dashboard"],
+  ["/", "Packs"],
+  ["/portfolio", "Binder"],
+  ["/verify", "Proof"],
 ];
 
 export function Nav() {
   const path = usePathname();
   const g = useGame();
+  const [funding, setFunding] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const active = (h: string) => (h === "/" ? path === "/" || path === "/play" : path === h);
+  const addFunds = async () => {
+    setErr(null);
+    setFunding(true);
+    try {
+      await g.faucet();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFunding(false);
+    }
+  };
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-        <Link href="/" className="font-black tracking-tight">
-          <span className="text-accent">Stock</span> Scratchers
-        </Link>
-        <nav className="hidden gap-4 text-sm sm:flex">
+    <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-8">
+        <Link href="/" className="text-[22px] font-extrabold tracking-tight">Stock Scratchers</Link>
+        <nav aria-label="Main" className="order-3 flex w-full justify-center gap-1 sm:order-none sm:w-auto">
           {LINKS.map(([h, l]) => (
-            <Link key={h} href={h} className={path === h ? "text-text" : "text-dim hover:text-text"}>
+            <Link key={h} href={h} aria-current={active(h) ? "page" : undefined} className={`flex min-h-11 items-center rounded-full px-4 text-[15px] ${active(h) ? "bg-text font-extrabold text-ink" : "font-semibold text-[#C9C2E6]"}`}>
               {l}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="num text-sm text-money" title="Rollup USDC balance">${g.usdc.toFixed(2)}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="num flex min-h-11 items-center rounded-full border border-[#3A3350] px-3.5 text-[13px] font-bold" title="Mock USDC on the rollup">{money(g.usdc)} USDC</span>
+          <button onClick={addFunds} disabled={funding} className="min-h-11 rounded-full bg-accent px-4 text-sm font-extrabold text-ink disabled:opacity-50" title="Devnet faucet: +100 mock USDC">
+            {funding ? "Adding…" : "Add funds"}
+          </button>
           <LoginButton />
         </div>
       </div>
-      <nav className="flex justify-around border-t border-line py-2 text-xs sm:hidden">
-        {LINKS.map(([h, l]) => (
-          <Link key={h} href={h} className={path === h ? "text-text" : "text-dim"}>
-            {l}
-          </Link>
-        ))}
-      </nav>
+      {err && <p role="alert" className="px-4 pb-2 text-center text-sm text-danger">{err}</p>}
     </header>
   );
 }

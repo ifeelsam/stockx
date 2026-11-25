@@ -3,17 +3,17 @@
 
 @theme {
   --color-ink: #0d0b14;
-  --color-surface: #15121f;
-  --color-surface-hi: #1d1929;
-  --color-line: #2c2739;
+  --color-surface: #1b1726;
+  --color-surface-hi: #241f33;
+  --color-line: #2a2539;
   --color-text: #f2effa;
-  --color-dim: #9a93ae;
+  --color-dim: #a9a3bc;
   --color-card: #f2effa;
   --color-card-ink: #171320;
   --color-accent: #9df3ff;
-  --color-money: #6ef7a8;
-  --color-gold: #f7d45c;
-  --color-danger: #ff6b7a;
+  --color-money: #9df3ff;
+  --color-gold: #ffd84d;
+  --color-danger: #ff8a7a;
   --color-warn: #ffb547;
   --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -23,67 +23,32 @@ html, body { background: var(--color-ink); color: var(--color-text); }
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  background-image:
-    radial-gradient(1000px 600px at 12% -10%, rgba(157, 243, 255, 0.1), transparent 70%),
-    radial-gradient(900px 500px at 88% 0%, rgba(192, 132, 252, 0.09), transparent 70%);
-  background-attachment: fixed;
 }
 ::selection { background: var(--color-accent); color: var(--color-ink); }
 .num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
-/* Face-down pack foil */
-.holo-foil {
-  background-color: #1a1626;
-  background-image:
-    radial-gradient(circle at 28% 22%, rgba(157, 243, 255, 0.32), transparent 42%),
-    radial-gradient(circle at 78% 18%, rgba(255, 122, 209, 0.26), transparent 40%),
-    radial-gradient(circle at 68% 82%, rgba(247, 212, 92, 0.24), transparent 45%),
-    radial-gradient(circle at 18% 78%, rgba(110, 247, 168, 0.22), transparent 42%),
-    conic-gradient(from 210deg at 50% 50%, #241d36, #342447, #203043, #2d1f3e, #241d36);
-}
-.holo-foil::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: repeating-linear-gradient(115deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 9px);
-  mix-blend-mode: overlay;
-  opacity: 0.45;
-  pointer-events: none;
-}
-/* Face-up holo sweep, intensity set per rarity */
-.holo-sheen {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(118deg, transparent 18%, rgba(157,243,255,0.55) 34%, rgba(255,122,209,0.5) 44%, rgba(247,212,92,0.5) 54%, rgba(110,247,168,0.5) 64%, transparent 82%);
-  mix-blend-mode: color-dodge;
-  opacity: 0.28;
-}
-.holo-sheen::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: repeating-linear-gradient(70deg, rgba(255,255,255,0.35) 0 1px, transparent 1px 7px);
-  mix-blend-mode: overlay;
-  opacity: 0.5;
-}
-.card-stock { background: var(--color-card); color: var(--color-card-ink); }
-.card-dust { background: #ddd9e2; color: #55505f; }
+.btn-primary { display: inline-flex; min-height: 3.25rem; align-items: center; justify-content: center; border-radius: 14px; background: var(--color-accent); color: var(--color-ink); padding: 0 1.25rem; font-weight: 800; cursor: pointer; }
+.btn-ghost { display: inline-flex; min-height: 3.25rem; align-items: center; justify-content: center; border-radius: 14px; border: 1px solid #3a3350; padding: 0 1.25rem; font-weight: 700; cursor: pointer; }
+.btn-primary:disabled, .btn-ghost:disabled { opacity: 0.4; cursor: default; }
+.chip { min-height: 2.75rem; border-radius: 999px; border: 1px solid #3a3350; padding: 0 0.875rem; font-size: 15px; font-weight: 800; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--color-text); border-color: var(--color-text); color: var(--color-ink); }
 
-@keyframes shimmer { 0% { background-position: -300px 0 } 100% { background-position: 300px 0 } }
-.shimmer {
-  background: linear-gradient(90deg, #1d1929 0%, #322a45 50%, #1d1929 100%);
-  background-size: 600px 100%;
-  animation: shimmer 1.4s linear infinite;
-}
+/* holo card + pack motion (design canvas "B · Holo cards") */
+@keyframes tease { 0%,100% { box-shadow: 0 0 0 2px var(--rc), 0 0 18px 2px var(--rc) } 50% { box-shadow: 0 0 0 2px var(--rc), 0 0 46px 10px var(--rc) } }
+.tease { animation: tease 1.4s ease-in-out infinite; }
+@keyframes twinkle { 0%,100% { transform: scale(0.2) rotate(0); opacity: 0 } 50% { transform: scale(1) rotate(45deg); opacity: 1 } }
+.tw { animation: twinkle ease-in-out infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+.bob { animation: bob 3.8s ease-in-out infinite; }
+@keyframes pack-shake { 0%,100% { transform: translateX(0) rotate(0) } 20% { transform: translateX(-4px) rotate(-1.5deg) } 40% { transform: translateX(5px) rotate(1.5deg) } 60% { transform: translateX(-3px) rotate(-1deg) } 80% { transform: translateX(2px) rotate(0.5deg) } }
+.pack-shake { animation: pack-shake 0.35s ease-in-out infinite; }
+@keyframes flipin { 0% { transform: perspective(900px) rotateY(90deg) scale(0.96) } 70% { transform: perspective(900px) rotateY(-8deg) scale(1.02) } 100% { transform: perspective(900px) rotateY(0) scale(1) } }
+.flipin { animation: flipin 0.6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes shim { 0%,100% { opacity: 0.45 } 50% { opacity: 1 } }
+.shim { animation: shim 1.3s ease-in-out infinite; }
 @keyframes shake { 10%,90% { transform: translate3d(-2px,0,0) } 20%,80% { transform: translate3d(4px,0,0) } 30%,50%,70% { transform: translate3d(-6px,0,0) } 40%,60% { transform: translate3d(6px,0,0) } }
 .shake { animation: shake 0.42s cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes holo-drift { 0%,100% { transform: translate3d(-4%, -2%, 0) rotate(0.001deg) } 50% { transform: translate3d(4%, 3%, 0) rotate(0.001deg) } }
-.holo-drift { animation: holo-drift 9s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .shimmer, .shake, .holo-drift { animation: none; }
+  .tease, .tw, .bob, .pack-shake, .flipin, .shim, .shake { animation: none; }
 }

@@ -123,23 +123,25 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const cards = useMemo<UiCard[]>(
     () =>
       rawCards
-        .filter((k) => k.state !== CardState.Settled && k.state !== CardState.Cancelled)
+        // Settled slots stay visible (binder, proof) until a later buy reuses them.
+        .filter((k) => k.state !== CardState.Cancelled)
         // cards of retired series (1-4) cannot be claimed: never show them under another series' table
         .filter((k) => dep.series.some((x) => x.id === k.series))
         .map((k) => {
           const id = Number(k.id.toString());
-          const revealed = k.state === CardState.Revealed || k.state === CardState.ClaimRequested;
+          const settled = k.state === CardState.Settled;
+          const revealed = settled || k.state === CardState.Revealed || k.state === CardState.ClaimRequested;
           const seed = revealed ? Uint8Array.from(k.seed) : undefined;
           const s = seriesById(k.series);
           return {
             id,
             seriesId: k.series,
-            state: revealed ? (k.state === CardState.ClaimRequested ? "claiming" : "revealed") : "pending",
+            state: settled ? "settled" : revealed ? (k.state === CardState.ClaimRequested ? "claiming" : "revealed") : "pending",
             seed,
             art: seed ? cardArt(seed, s.tiers) : undefined,
             lockedPrice: Number(k.lockedPrice.toString()) / 1e8,
             shares: revealed ? Number(k.shares.toString()) / 1e6 : 0,
-            flipped: flipped.has(id),
+            flipped: settled || flipped.has(id),
           } satisfies UiCard;
         }),
     [rawCards, flipped, dep],
