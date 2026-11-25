@@ -1,19 +1,8 @@
-import { STOCK_LOOK } from "@scratchers/ui-tokens";
-import type { Feed } from "./HoloCard";
+import { PACK_PATH, STOCK_LOOK, type Feed } from "@scratchers/ui-tokens";
 import { Gem } from "./HoloCard";
 import { Scaled } from "./Scaled";
 
-/** Foil pouch outline: crimped top and bottom seals, pinched sides (220×330, from the design canvas). */
-const SHAPE = (() => {
-  const W = 220, H = 330, Z = 5, n = 22, S = 26;
-  let d = `M 0 ${Z}`;
-  for (let k = 1; k <= n; k++) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? 0 : Z}`;
-  d += ` L ${W} ${S} C ${W - 1} ${S + 6} ${W - 9} ${S + 10} ${W - 8} ${S + 22}`;
-  d += ` C ${W + 1} ${H * 0.36} ${W + 1} ${H * 0.64} ${W - 8} ${H - S - 22} C ${W - 9} ${H - S - 10} ${W - 1} ${H - S - 6} ${W} ${H - S} L ${W} ${H - Z}`;
-  for (let k = n - 1; k >= 0; k--) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? H : H - Z}`;
-  d += ` L 0 ${H - S} C 1 ${H - S - 6} 9 ${H - S - 10} 8 ${H - S - 22} C -1 ${H * 0.64} -1 ${H * 0.36} 8 ${S + 22} C 9 ${S + 10} 1 ${S + 6} 0 ${S} Z`;
-  return `path('${d}')`;
-})();
+const SHAPE = `path('${PACK_PATH}')`;
 
 const crimp = "repeating-linear-gradient(90deg, rgba(255,255,255,0.20) 0 1px, rgba(0,0,0,0.16) 1px 2px, transparent 2px 4px)";
 

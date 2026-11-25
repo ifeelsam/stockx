@@ -149,3 +149,67 @@ export const STOCK_LOOK: Record<"TSLA" | "NVDA" | "SOL", StockLook> = {
   NVDA: { symbol: "NVDA", company: "Nvidia", packName: "Nvidia", pack: "#1FAF6A", art: "#1FAF6A" },
   SOL: { symbol: "SOL", company: "Solana", packName: "Solana \u00b7 24/7", pack: "#8F6BFF", art: "#5B3FA8" },
 };
+
+// ---- what screens say about money, odds and cards (shared so web and mobile never disagree) ----------
+
+export const money = (n: number) => `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** The value printed on a card: beside "1,000\u00d7" the cents do not fit. */
+export const cardUsd = (n: number) => (n >= 100 ? `$${n.toLocaleString("en-US")}` : money(n));
+/** "\u25b2 $1.20" or "\u25bc $0.30"; under half a cent is flat, not a loss. */
+export const change = (d: number) => ({ text: `${d <= -0.005 ? "\u25bc" : d >= 0.005 ? "\u25b2" : "\u00b1"} ${money(Math.abs(d))}`, down: d <= -0.005 });
+export const serialOf = (id: number) => String(id).padStart(6, "0");
+export const oddsText = (weight: number, total: number) => (weight / total > 0.5 ? `~${Math.round((weight / total) * 100)}%` : `1 in ${Math.round(total / weight).toLocaleString("en-US")}`);
+
+export type Feed = keyof typeof STOCK_LOOK;
+export type CardFace = {
+  feed: Feed;
+  rarity: TierKey;
+  mult: string;
+  usd: string;
+  shares: string;
+  now?: string;
+  serial: string;
+  /** 0..1: angle of the holo sweep (derived from the seed for real cards) */
+  tilt?: number;
+};
+
+/** Everything a screen says about one revealed card. Dust is a partial refund, never a win. */
+export function describeCard(
+  c: { id: number; seed?: Uint8Array; art: { multiplier: number }; shares: number; lockedPrice: number },
+  s: { feed: Feed; ticker: string; ticketUsd: number },
+  price: number,
+) {
+  const t = tierByMultiplier(c.art.multiplier);
+  const usd = c.art.multiplier * s.ticketUsd;
+  const value = c.shares * (price || c.lockedPrice);
+  const mult = `${c.art.multiplier.toLocaleString("en-US")}\u00d7`;
+  const face: CardFace = {
+    feed: s.feed,
+    rarity: t.key,
+    mult,
+    usd: cardUsd(usd),
+    shares: `${c.shares.toFixed(6)} shares`,
+    now: `now ${money(value)} ${value >= c.shares * c.lockedPrice ? "\u25b2" : "\u25bc"}`,
+    serial: serialOf(c.id),
+    tilt: c.seed ? c.seed[24] / 255 : 0.35,
+  };
+  const caption =
+    t.key === "dust"
+      ? { title: "Dust", sub: `${Math.round(usd * 100)}\u00a2 back in ${s.ticker}` }
+      : t.key === "common"
+        ? { title: "Common 1\u00d7", sub: `money back \u00b7 ${money(usd)} in ${s.ticker}` }
+        : { title: `${t.label} ${mult}`, sub: `${money(usd)} in ${s.ticker} \u00b7 up ${money(usd - s.ticketUsd)}` };
+  return { tier: t, usd, value, face, caption };
+}
+
+/** Foil pouch outline as an SVG path (220\u00d7330): crimped top and bottom seals, pinched sides. */
+export const PACK_PATH = (() => {
+  const W = 220, H = 330, Z = 5, n = 22, S = 26;
+  let d = `M 0 ${Z}`;
+  for (let k = 1; k <= n; k++) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? 0 : Z}`;
+  d += ` L ${W} ${S} C ${W - 1} ${S + 6} ${W - 9} ${S + 10} ${W - 8} ${S + 22}`;
+  d += ` C ${W + 1} ${H * 0.36} ${W + 1} ${H * 0.64} ${W - 8} ${H - S - 22} C ${W - 9} ${H - S - 10} ${W - 1} ${H - S - 6} ${W} ${H - S} L ${W} ${H - Z}`;
+  for (let k = n - 1; k >= 0; k--) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? H : H - Z}`;
+  d += ` L 0 ${H - S} C 1 ${H - S - 6} 9 ${H - S - 10} 8 ${H - S - 22} C -1 ${H * 0.64} -1 ${H * 0.36} 8 ${S + 22} C 9 ${S + 10} 1 ${S + 6} 0 ${S} Z`;
+  return d;
+})();

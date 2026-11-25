@@ -1,18 +1,7 @@
-import { FINISH, STOCK_LOOK, TIERS, type TierKey } from "@scratchers/ui-tokens";
+import { FINISH, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
 import { Scaled } from "./Scaled";
 
-export type Feed = keyof typeof STOCK_LOOK;
-export type CardFace = {
-  feed: Feed;
-  rarity: TierKey;
-  mult: string;
-  usd: string;
-  shares: string;
-  now?: string;
-  serial: string;
-  /** 0..1: angle of the holo sweep (derived from the seed for real cards) */
-  tilt?: number;
-};
+export type { CardFace, Feed };
 
 const HOLO = (a: number) => `conic-gradient(from ${Math.round(a * 360)}deg at ${Math.round(a * 100)}% 40%, #ff6ec7, #7afcff, #feff9c, #b28dff, #ff6ec7)`;
 const FRAME_TEX: Record<TierKey, string> = {

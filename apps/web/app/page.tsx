@@ -6,9 +6,7 @@ import { isPaused, useGame, VISIBLE_SERIES } from "@scratchers/app-core";
 import { multiplierOf, rtp, totalWeight, DEFAULT_TIERS } from "@scratchers/sdk";
 import { HoloCard } from "@/components/HoloCard";
 import { HoloPack } from "@/components/HoloPack";
-import { cardUsd, money } from "@/lib/cards";
-
-const oddsText = (weight: number, total: number) => (weight / total > 0.5 ? `~${Math.round((weight / total) * 100)}%` : `1 in ${Math.round(total / weight).toLocaleString("en-US")}`);
+import { cardUsd, money, oddsText } from "@/lib/cards";
 
 /** Packs: choose a pack, see what is inside. */
 export default function Packs() {
