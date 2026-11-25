@@ -46,9 +46,9 @@ flowchart LR
 
 `Empty → Paid → RandomnessPending → Revealed → ClaimRequested → Settled`, plus `RandomnessPending → Cancelled` on VRF timeout.
 
-- `buy_card` reserves the worst-case liability (`max_multiplier × ticket ÷ price`) and requests one scoped VRF per card.
+- `buy_card` reserves the worst-case liability (`max_multiplier_bps × ticket ÷ 10,000 ÷ price`) and requests one scoped VRF per card.
 - The callback is bound to the request id (sha256 of player, card id, caller seed, index), is idempotent, and releases the unused reservation.
-- `claim_all` (≤ 8 cards of one series) commits the Player and schedules one `pay_out_action` per winning card. The `Payout` PDA makes each payout exactly-once; the keeper repairs dropped actions.
+- `claim_all` (≤ 8 cards of one series) commits the Player and schedules one `pay_out_action` per card (every rarity, Dust included, pays shares; each creates a `Payout` receipt whose ~0.0008 SOL rent comes from the player's action escrow). The `Payout` PDA makes each payout exactly-once; the keeper repairs dropped actions.
 
 ## Pricing
 

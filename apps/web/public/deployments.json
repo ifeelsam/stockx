@@ -1,6 +1,6 @@
 {
   "network": "devnet",
-  "rpc": "https://api.devnet.solana.com",
+  "rpc": "https://rpc.magicblock.app/devnet",
   "program": "EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn",
   "admin": "Bo7dijSQzznSVmdy7jY622xrUdekfZgQyJU2dFcNbNvT",
   "keeper": "C9fPeTbAdh12kD5Q9a8FqNanrKY6a37KYhCFdPdup4iU",
@@ -27,31 +27,31 @@
   },
   "series": [
     {
-      "id": 1,
+      "id": 11,
       "stock": "mTSLA",
       "demo": false,
-      "pda": "5PhJnzPoVhJUz9VUBHLEkmMYYV1JQKxqQNx8NvVC6s76",
+      "pda": "G34vag4nKqk5DHCcnr6StAKajuGLmZRYnqHhtEnwJeTx",
       "vault": "D8EAdGr2ytkuB6M8wES6AeKmN7t8Tb5nWtnJkWCjMB7Q"
     },
     {
-      "id": 2,
+      "id": 12,
       "stock": "mNVDA",
       "demo": false,
-      "pda": "G6FPbX4FKDPG8Z4hsXDP5xT6S7C6s2NRUbxaKRt95bYc",
+      "pda": "82SwVwRpkAfyF5kDWHnHH57WxF3JJtsQ1WgRL1ZMtCod",
       "vault": "4FVr7y8U2gJ5RZCDAci8nPQwboKJrxUBW3GUv1pW22yn"
     },
     {
-      "id": 3,
+      "id": 13,
       "stock": "mSOL",
       "demo": false,
-      "pda": "5obgf7xCiUfFJxqBrctLUEBcXTAG2uYLt9zR5SHAMZwv",
+      "pda": "ExXdiNCJijrpbjgE6tj2dJpCxcVA4LVWQfp7iyQ6oE8B",
       "vault": "FzVmDMLXNGGfrepS5pwfqQLfrBrW4GMu5FvKf9jZ9Wfx"
     },
     {
-      "id": 4,
+      "id": 14,
       "stock": "mTSLA",
       "demo": true,
-      "pda": "D34y11GgwXba4j2HdSu18KE7MBZJ2MvoeXhyD83M331R",
+      "pda": "7gPiMbe1G6vtJBypQZypePp5ynu2upJmpnhwvs3itn1h",
       "vault": "D8EAdGr2ytkuB6M8wES6AeKmN7t8Tb5nWtnJkWCjMB7Q"
     }
   ]
