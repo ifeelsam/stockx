@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useGame, type UiCard } from "@scratchers/app-core";
+import { CountUp } from "./CountUp";
 import { HoloCard } from "./HoloCard";
 import { cardView } from "@/lib/cards";
 
@@ -25,6 +26,7 @@ export function JackpotOverlay({ card, onClose, onClaim }: { card: (UiCard & { a
           </motion.div>
           <div className="relative text-center">
             <div className="text-3xl font-extrabold tracking-tight">A Grail {v.series.feed}.</div>
+            <div className="text-3xl font-extrabold text-gold"><CountUp to={v.usd} /></div>
             <div className="text-[15px] text-[#C9C2E6]">{v.caption.sub}{v.series.demo ? " · demo odds" : ""}</div>
           </div>
           <div className="relative flex w-full max-w-sm gap-2.5">
