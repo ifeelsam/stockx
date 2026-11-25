@@ -13,6 +13,10 @@ use ephemeral_rollups_sdk::{ActionArgs, ShortAccountMeta};
 
 /// Each scheduled action is ~330 bytes of CPI data; keep the whole bundle well under the 10 KB CPI limit.
 pub const MAX_CLAIM_BATCH: usize = 8;
+/// Requested per `pay_out_action` (measured use on devnet: 25-32k CU).
+pub const PAY_OUT_CU: u32 = 100_000;
+// The validator rejects an intent (0xA0000002) over 1.4M CU: 120k for the commit, the actions, 1k overhead.
+const _: () = assert!(120_000 + MAX_CLAIM_BATCH as u32 * PAY_OUT_CU + 1_000 <= 1_400_000);
 pub const ACTION_ESCROW_INDEX: u8 = 255; // ActionArgs::new default
 
 /// `MagicIntentBundleBuilder::build()` copies `is_signer` from the input AccountInfo. The Player PDA
@@ -115,7 +119,7 @@ pub fn claim_all(ctx: Context<ClaimAll>, series_id: u16) -> Result<()> {
             ],
             args: ActionArgs::new(crate::instruction::PayOutAction { card_id: *card_id }.data()),
             escrow_authority: player_ai.clone(),
-            compute_units: 200_000,
+            compute_units: PAY_OUT_CU,
         })
         .collect();
 
