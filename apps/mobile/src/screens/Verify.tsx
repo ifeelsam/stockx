@@ -16,7 +16,7 @@ export function Verify() {
   const [q, setQ] = useState("");
   const local = /^\d+$/.test(q.trim()) ? g.cards.find((c) => c.id === Number(q.trim())) : undefined;
   const seed = local?.seed ?? hex(q);
-  const series = SERIES.find((s) => s.id === (local?.seriesId ?? 1))!;
+  const series = SERIES.find((s) => s.id === (local?.seriesId ?? 11))!;
   const out = useMemo(() => (seed ? { art: cardArt(seed, series.tiers), tier: tierFor(seed, series.tiers) } : null), [seed, series]);
   const t = out && tierByMultiplier(out.art.multiplier);
   return (
@@ -29,8 +29,10 @@ export function Verify() {
       {out && t && (
         <View style={[ui.card, { gap: 10 }]}>
           <View style={[ui.row, { justifyContent: "space-between" }]}>
-            <Text style={{ color: t.color, fontWeight: "800", fontSize: 20 }}>{t.label}</Text>
-            <Text style={ui.dim}>tier {out.tier} · {out.art.multiplier}×</Text>
+            <Text style={{ color: out.art.multiplierBps < 10_000 ? colors.textDim : t.color, fontWeight: "800", fontSize: 20 }}>
+              {out.art.rarity} · {t.payout}
+            </Text>
+            <Text style={ui.dim}>tier {out.tier} · {out.art.multiplier.toLocaleString(undefined, { maximumFractionDigits: 2 })}×</Text>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {out.art.panels.map((s, i) => (

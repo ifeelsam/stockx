@@ -4,9 +4,9 @@ import { TIERS } from "@scratchers/ui-tokens";
 import { Symbol } from "./Symbol";
 import { CountUp } from "./CountUp";
 
-/** Full-screen 1000x moment. A Rive file can replace the backdrop later (see docs/DECISIONS.md). */
+/** Full-screen Grail moment. A Rive file can replace the backdrop later (see docs/DECISIONS.md). */
 export function JackpotOverlay({ open, usd, onClose }: { open: boolean; usd: number; onClose: () => void }) {
-  const t = TIERS.jackpot;
+  const t = TIERS.grail;
   return (
     <AnimatePresence>
       {open && (
@@ -16,7 +16,7 @@ export function JackpotOverlay({ open, usd, onClose }: { open: boolean; usd: num
           exit={{ opacity: 0 }}
           onClick={onClose}
           className="fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center"
-          style={{ background: "radial-gradient(circle at 50% 45%, #5a3d00ee 0%, #0a0c10f2 70%)" }}
+          style={{ background: "radial-gradient(circle at 50% 45%, #5a3d00ee 0%, #0d0b14f2 70%)" }}
         >
           {[0, 1, 2].map((i) => (
             <motion.div
@@ -32,11 +32,12 @@ export function JackpotOverlay({ open, usd, onClose }: { open: boolean; usd: num
             <Symbol name="bull" color={t.color} size={160} glow />
           </motion.div>
           <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 text-5xl font-black tracking-tight" style={{ color: t.color }}>
-            JACKPOT 1000×
+            GRAIL · 1,000×
           </motion.h1>
           <div className="mt-3 text-4xl font-bold text-text">
-            <CountUp to={usd} />
+            <CountUp to={usd} prefix="$" />
           </div>
+          <p className="mt-2 text-sm text-dim">in tokenized stock</p>
           <p className="mt-6 text-sm text-dim">tap to continue</p>
         </motion.div>
       )}

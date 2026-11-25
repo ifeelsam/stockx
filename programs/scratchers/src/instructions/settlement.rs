@@ -48,7 +48,7 @@ pub struct ClaimAll<'info> {
 }
 
 /// Claims up to `MAX_CLAIM_BATCH` revealed cards of one series per call (call again for more).
-/// Losing cards settle immediately; winners become `ClaimRequested` and get a post-commit pay_out.
+/// Every rarity holds stock, so Dust is paid too; only a zero-share card (custom table) settles directly.
 pub fn claim_all(ctx: Context<ClaimAll>, series_id: u16) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     let mint = ctx.accounts.series.stock_mint;

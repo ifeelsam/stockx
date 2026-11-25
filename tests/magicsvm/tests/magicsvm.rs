@@ -89,10 +89,13 @@ fn custom(e: ScratchError) -> String {
     format!("Custom({})", 6000 + e as u32)
 }
 
-/// Series with the default 76% RTP table.
+/// Series with the default 75.371% RTP rarity table (Dust → Grail).
 fn default_tiers() -> [Tier; 8] {
-    let w = [(0, 61_858), (1, 25_000), (2, 10_000), (5, 2_000), (10, 1_000), (50, 100), (100, 40), (1000, 2)];
-    w.map(|(multiplier, weight)| Tier { multiplier, weight })
+    let w = [
+        (2_000, 76_025), (10_000, 12_500), (20_000, 8_333), (50_000, 2_000),
+        (100_000, 1_000), (500_000, 100), (1_000_000, 40), (10_000_000, 2),
+    ];
+    w.map(|(multiplier_bps, weight)| Tier { multiplier_bps, weight })
 }
 
 fn stock_mint_account(authority: &Pubkey) -> solana_account::Account {
@@ -270,7 +273,7 @@ fn buy_ten_cards_get_ten_vrf_reveals() {
     assert_eq!(p.session_spend_remaining_e6, 10_000_000);
     assert_eq!(p.cards.iter().filter(|c| c.state == CardState::RandomnessPending as u8).count(), 10);
     let v: VaultState = read(&e.svm, Ephemeral, &e.vault);
-    let reserve_per = 1000 * 1_000_000u64 * 100_000_000 / PRICE as u64; // 1000x worst case
+    let reserve_per = (10_000_000u128 * 1_000_000 * 100_000_000 / (10_000 * PRICE as u128)) as u64; // Grail 1000x worst case
     assert_eq!(v.reserved_shares, 10 * reserve_per);
     assert_eq!(v.usdc_in_e6, 10_000_000);
     let st: Stats = read(&e.svm, Ephemeral, &e.stats);
@@ -290,7 +293,7 @@ fn buy_ten_cards_get_ten_vrf_reveals() {
     for c in &cards {
         let tier = series.tier_for(&c.seed);
         assert_eq!(c.tier as usize, tier, "tier must be recomputable from the seed");
-        let shares = series.tiers[tier].multiplier as u64 * 1_000_000 * 100_000_000 / PRICE as u64;
+        let shares = (series.tiers[tier].multiplier_bps as u128 * 1_000_000 * 100_000_000 / (10_000 * PRICE as u128)) as u64;
         assert_eq!(c.shares, shares);
         expected_shares += shares;
     }
@@ -472,10 +475,10 @@ fn prep_settlement(e: &mut Env, fund_escrow: bool, create_user_ata: bool) -> (Pu
     (vault_token, user_ata)
 }
 
-/// One winning card (1x) and one losing card, both revealed.
-fn buy_one_win_one_loss(e: &mut Env) {
+/// One Common (1×) and one Dust (0.2×) card, both revealed. Every rarity pays stock now, Dust included.
+fn buy_one_common_one_dust(e: &mut Env) {
     let user = e.user.insecure_clone();
-    for r in [70_000u64, 0] {
+    for r in [80_000u64, 0] {
         force_randomness(&mut e.svm, r);
         let buy = buy_ix(e, &user, 1, u64::MAX);
         send(&mut e.svm, Ephemeral, &[&user], buy, "buy_card");
@@ -512,24 +515,26 @@ fn card_by_id(p: &Player, id: u64) -> Card {
 fn claim_all_commits_and_magic_action_pays_out_once() {
     let mut e = setup(10_000_000, 100_000_000, default_tiers());
     let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
-    buy_one_win_one_loss(&mut e);
+    buy_one_common_one_dust(&mut e);
     let user = e.user.insecure_clone();
 
     let claim = claim_ix(&e);
     send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
 
-    // Rollup view: loser settled on the spot, winner awaiting payout; accounting released.
+    // Rollup view: both rarities hold stock, so both await payout; accounting released.
     let p = read_player(&e.svm, Ephemeral, &e.player);
-    assert_eq!(card_by_id(&p, 1).state, CardState::Settled as u8, "losing card settles immediately");
     assert_eq!(card_by_id(&p, 0).state, CardState::ClaimRequested as u8);
+    assert_eq!(card_by_id(&p, 1).state, CardState::ClaimRequested as u8, "Dust is paid, not voided");
     let v: VaultState = read(&e.svm, Ephemeral, &e.vault);
-    assert_eq!((v.reserved_shares, v.available_shares_mirror), (0, 100_000_000 - 5_000));
+    assert_eq!((v.reserved_shares, v.available_shares_mirror), (0, 100_000_000 - 6_000));
 
-    // Base layer: the action ran. Payout receipt exists and the shares are in the player's wallet.
+    // Base layer: both actions ran. Payout receipts exist and the shares are in the player's wallet.
     let payout: Payout = read(&e.svm, Base, &payout_pda(&e, 0));
     assert_eq!(payout.shares, 5_000);
-    assert_eq!(token_amount(&e.svm, &user_ata), 5_000);
-    assert_eq!(token_amount(&e.svm, &vault_token), 100_000_000 - 5_000);
+    let dust: Payout = read(&e.svm, Base, &payout_pda(&e, 1));
+    assert_eq!(dust.shares, 1_000, "Dust = 0.2 × $1 ÷ $200 = 0.001 shares");
+    assert_eq!(token_amount(&e.svm, &user_ata), 6_000);
+    assert_eq!(token_amount(&e.svm, &vault_token), 100_000_000 - 6_000);
 
     // Client/keeper confirms the payout, then marks the slot settled (anyone may, with proof).
     let mark = ix(ix_data::MarkSettled { card_id: 0 }, scratchers::accounts::MarkSettled {
@@ -541,7 +546,7 @@ fn claim_all_commits_and_magic_action_pays_out_once() {
     let again = keeper_pay_out_ix(&e, 0, vault_token, user_ata);
     let err = try_send(&mut e.svm, Base, &[&e.admin.insecure_clone()], again).unwrap_err();
     assert!(err.contains(&custom(ScratchError::AlreadyPaid)) || err.contains(&custom(ScratchError::BadState)), "{err}");
-    assert_eq!(token_amount(&e.svm, &user_ata), 5_000, "no double pay");
+    assert_eq!(token_amount(&e.svm, &user_ata), 6_000, "no double pay");
 }
 
 #[test]
@@ -551,7 +556,7 @@ fn dropped_magic_action_is_repaired_by_keeper_exactly_once() {
     // succeed, then erase the action's base-layer effects (receipt + token movement).
     let mut e = setup(10_000_000, 100_000_000, default_tiers());
     let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
-    buy_one_win_one_loss(&mut e);
+    buy_one_common_one_dust(&mut e);
     let user = e.user.insecure_clone();
     let claim = claim_ix(&e);
     send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
@@ -583,7 +588,7 @@ fn failing_action_does_not_commit_in_magicsvm_and_claim_can_be_retried() {
     // retry after the wallet is ready succeeds and pays exactly once.
     let mut e = setup(10_000_000, 100_000_000, default_tiers());
     let (_, user_ata) = prep_settlement(&mut e, true, false);
-    buy_one_win_one_loss(&mut e);
+    buy_one_common_one_dust(&mut e);
     let user = e.user.insecure_clone();
     let claim = claim_ix(&e);
     let err = try_send(&mut e.svm, Ephemeral, &[&user], claim).unwrap_err();
@@ -594,18 +599,17 @@ fn failing_action_does_not_commit_in_magicsvm_and_claim_can_be_retried() {
     prep_settlement(&mut e, false, true);
     let claim = claim_ix(&e);
     send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all retry");
-    assert_eq!(token_amount(&e.svm, &user_ata), 5_000);
+    assert_eq!(token_amount(&e.svm, &user_ata), 6_000, "Common 5,000 + Dust 1,000");
 }
 
 #[test]
 fn pay_out_is_not_callable_by_strangers() {
     let mut e = setup(10_000_000, 100_000_000, default_tiers());
     let (vault_token, user_ata) = prep_settlement(&mut e, true, true);
-    buy_one_win_one_loss(&mut e);
+    buy_one_common_one_dust(&mut e);
     let user = e.user.insecure_clone();
     let claim = claim_ix(&e);
     send(&mut e.svm, Ephemeral, &[&user], claim, "claim_all");
-    // (action already paid card 0; use a fresh attacker-signed keeper call and a direct action call)
     let attacker = Keypair::new();
     e.svm.airdrop(&attacker.pubkey(), 1_000_000_000).unwrap();
     let mut forged = keeper_pay_out_ix(&e, 0, vault_token, user_ata);

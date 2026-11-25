@@ -1,7 +1,7 @@
 [package]
 name = "scratchers"
 version = "0.1.0"
-description = "Stock Scratchers: VRF scratch cards paying tokenized stock"
+description = "Stock Scratchers: VRF holo packs paying tokenized stock"
 edition = "2021"
 
 [lib]

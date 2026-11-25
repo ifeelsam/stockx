@@ -34,7 +34,7 @@ export type CreateSeriesParams = {
 };
 
 export function createSeriesIx(p: ScratchersProgram, admin: PublicKey, a: CreateSeriesParams): Promise<TransactionInstruction> {
-  if (a.tiers.length !== 8) throw new Error("a series has exactly 8 tier slots (pad with {multiplier:0, weight:0})");
+  if (a.tiers.length !== 8) throw new Error("a series has exactly 8 rarity slots (pad with {multiplierBps:0, weight:0})");
   return p.methods
     .createSeries({
       id: a.id,

@@ -17,7 +17,7 @@ const toHex = (u: Uint8Array) => [...u].map((b) => b.toString(16).padStart(2, "0
 export default function Verify() {
   const g = useGame();
   const [q, setQ] = useState("");
-  const [sid, setSid] = useState(1);
+  const [sid, setSid] = useState(11);
   const local = /^\d+$/.test(q.trim()) ? g.cards.find((c) => c.id === Number(q.trim())) : undefined;
   const seed = local?.seed ?? hex(q);
   const series = SERIES.find((s) => s.id === (local?.seriesId ?? sid))!;
@@ -38,15 +38,15 @@ export default function Verify() {
       {out && t && (
         <div className="space-y-4 rounded-2xl border border-line bg-surface p-5">
           <div className="flex items-baseline justify-between">
-            <div className="text-xl font-bold" style={{ color: t.color }}>{t.label}</div>
-            <div className="num text-dim">tier {out.tier} · {out.art.multiplier}×</div>
+            <div className="text-xl font-bold" style={{ color: out.art.multiplierBps < 10_000 ? "#9A93AE" : t.color }}>{out.art.rarity} · {t.payout}</div>
+            <div className="num text-dim">tier {out.tier} · {out.art.multiplier.toLocaleString(undefined, { maximumFractionDigits: 2 })}×</div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {out.art.panels.map((s, i) => {
               const w = out.art.winningPanels.includes(i);
               return (
-                <div key={i} className="flex aspect-square items-center justify-center rounded-xl bg-surface-hi" style={w ? { outline: `1.5px solid ${t.color}` } : undefined}>
-                  <Symbol name={s} size={36} color={w ? t.color : "#8B93A7"} />
+                <div key={i} className="flex aspect-square items-center justify-center rounded-xl bg-surface-hi" style={w ? { outline: `1.5px solid ${out.art.multiplierBps < 10_000 ? "#8B8798" : t.color}` } : undefined}>
+                  <Symbol name={s} size={36} color={w ? (out.art.multiplierBps < 10_000 ? "#8B8798" : t.color) : "#8B93A7"} />
                 </div>
               );
             })}

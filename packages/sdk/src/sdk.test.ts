@@ -10,20 +10,23 @@ const seedWith = (r: bigint) => {
   return s;
 };
 
-test("prize table: sums to 100,000 and RTP is exactly 76%", () => {
+test("prize table: sums to 100,000 and RTP is exactly 75.371%", () => {
   assert.equal(totalWeight(DEFAULT_TIERS), 100_000);
-  assert.equal(rtp(DEFAULT_TIERS), 0.76);
+  assert.equal(rtp(DEFAULT_TIERS), 0.75371);
+  assert.equal(DEFAULT_TIERS.reduce((a, t) => a + t.multiplierBps * t.weight, 0), 753_710_000);
 });
 
 test("tierFor matches the Rust boundary vectors", () => {
-  const vectors: [bigint, number][] = [[0n, 0], [61_857n, 0], [61_858n, 1], [86_858n, 2], [96_858n, 3], [98_858n, 4], [99_858n, 5], [99_958n, 6], [99_997n, 6], [99_998n, 7], [99_999n, 7], [100_000n, 0]];
+  const vectors: [bigint, number][] = [[0n, 0], [76_024n, 0], [76_025n, 1], [88_524n, 1], [88_525n, 2], [96_857n, 2], [96_858n, 3], [98_857n, 3], [98_858n, 4], [99_857n, 4], [99_858n, 5], [99_957n, 5], [99_958n, 6], [99_997n, 6], [99_998n, 7], [99_999n, 7], [100_000n, 0]];
   for (const [r, tier] of vectors) assert.equal(tierFor(seedWith(r), DEFAULT_TIERS), tier, `r=${r}`);
 });
 
 test("sharesFor matches the Rust vectors", () => {
-  assert.equal(sharesFor(1, 1_000_000n, 200n * 100_000_000n), 5_000n);
-  assert.equal(sharesFor(1, 1_000_000n, 300n * 100_000_000n), 3_333n);
+  assert.equal(sharesFor(10_000, 1_000_000n, 200n * 100_000_000n), 5_000n);
+  assert.equal(sharesFor(10_000, 1_000_000n, 300n * 100_000_000n), 3_333n);
   assert.equal(sharesFor(0, 1_000_000n, 1n), 0n);
+  // Plan §1: Dust (0.2×) on a $1 ticket at $412.35 is 0.000485 shares.
+  assert.equal(sharesFor(2_000, 1_000_000n, 412_35_000_000n), 485n);
 });
 
 test("PDA helpers agree with the IDL's own seed resolution", async () => {
@@ -103,12 +106,12 @@ const seedFrom = (n: number) => {
 };
 const count = (xs: string[], v: string) => xs.filter((x) => x === v).length;
 
-test("cardArt: wins show exactly three matching tier symbols, losses never show a triple", () => {
+test("cardArt: wins show exactly three matching tier symbols, Dust never shows a triple", () => {
   let wins = 0;
   for (let n = 1; n <= 3000; n++) {
     const art = cardArt(seedFrom(n));
     assert.equal(art.panels.length, 9);
-    assert.equal(art.win, art.multiplier > 0);
+    assert.equal(art.win, art.multiplierBps >= 10_000);
     const triples = new Set(art.panels.filter((p) => count(art.panels, p) >= 3));
     if (art.win) {
       wins++;
@@ -121,18 +124,18 @@ test("cardArt: wins show exactly three matching tier symbols, losses never show 
     }
     for (const f of FILLERS) assert.ok(count(art.panels, f) <= 2);
   }
-  assert.ok(wins > 800 && wins < 1500, `win rate sanity: ${wins}/3000`); // ≈ 38% expected
+  assert.ok(wins > 620 && wins < 850, `win rate sanity: ${wins}/3000`); // ≈ 24% (Common and up)
 });
 
 test("cardArt output is pinned (web/mobile drift would break verified cards)", () => {
   const loss = Uint8Array.from({ length: 32 }, (_, i) => (i * 37 + 11) & 255);
   assert.deepEqual(cardArt(loss), {
-    tier: 0, multiplier: 0, win: false, winningPanels: [],
+    tier: 0, rarity: "Dust", multiplierBps: 2_000, multiplier: 0.2, win: false, winningPanels: [],
     panels: ["moon", "leaf", "fish", "wave", "fish", "wave", "key", "dice", "leaf"],
   });
   const fiveX = Uint8Array.from({ length: 32 }, (_, i) => (i * 31 + 3 * 31) & 255);
   assert.deepEqual(cardArt(fiveX), {
-    tier: 3, multiplier: 5, win: true, winningPanels: [1, 5, 8],
+    tier: 3, rarity: "Rare", multiplierBps: 50_000, multiplier: 5, win: true, winningPanels: [1, 5, 8],
     panels: ["flame", "star", "dice", "dice", "leaf", "star", "moon", "leaf", "star"],
   });
   assert.deepEqual(cardArt(loss), cardArt(Uint8Array.from(loss)));
@@ -142,7 +145,7 @@ test("usdcForSale mirrors the program (spread, floor)", () => {
   assert.equal(usdcForSale(1_000_000n, 150n * 100_000_000n), 149_250_000n);
   assert.equal(usdcForSale(0n, 1n), 0n);
   // round trip never profits: $1 of TSLA bought at 248.31 sells for < $1
-  const sh = sharesFor(1, 1_000_000n, 24_831_000_000n);
+  const sh = sharesFor(10_000, 1_000_000n, 24_831_000_000n);
   assert.ok(usdcForSale(sh, 24_831_000_000n) < 1_000_000n);
 });
 

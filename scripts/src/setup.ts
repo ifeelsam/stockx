@@ -11,16 +11,12 @@ import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  configPda, connect, createSeriesIx, DEFAULT_TIERS, delegateFeedIx, delegateVaultIx, feedPda, freezeSeriesIx, getProgram, initConfigIx,
+  configPda, connect, createSeriesIx, DEFAULT_TIERS, DEMO_TIERS, delegateFeedIx, delegateVaultIx, feedPda, freezeSeriesIx, getProgram, initConfigIx,
   createTreasuryIx, treasuryUsdc, initFeedIx, initSellQuoteIx, initStatsIx, delegateStatsIx, statsPda, initVaultIx, sellQuotePda, seriesPda, syncInventoryIx, vaultPda, type Tier, DEVNET_VALIDATORS,
 } from "@scratchers/sdk";
 import { exists, hex, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
 const DELEGATION_PROGRAM = new PublicKey("DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh");
-const DEMO_TIERS: Tier[] = [ // "DEMO ODDS": jackpot ≈ 1 in 20. Never presented as the real table.
-  { multiplier: 0, weight: 40_000 }, { multiplier: 1, weight: 25_000 }, { multiplier: 2, weight: 15_000 }, { multiplier: 5, weight: 9_000 },
-  { multiplier: 10, weight: 4_000 }, { multiplier: 50, weight: 1_500 }, { multiplier: 100, weight: 500 }, { multiplier: 1000, weight: 5_000 },
-];
 // Pyth Hermes feed ids (looked up via /v2/price_feeds, 2026-11-24).
 const STOCKS = {
   mTSLA: { feedId: hex("16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1") },
@@ -28,12 +24,14 @@ const STOCKS = {
   mSOL: { feedId: hex("ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d") },
 } as const;
 type Sym = keyof typeof STOCKS;
-// id, stock, tiers, demo. Series 3 is crypto-priced so the app is never fully paused when US markets are shut.
+// Ids 11–14: the rarity-table layout. Ids 1–4 are the earlier 0×/money-back deployment and cannot be
+// reused (the Series account grew by 16 bytes, so old accounts do not deserialize).
+// id, stock, tiers, demo. Series 13 is crypto-priced so the app is never fully paused when US markets are shut.
 const SERIES: { id: number; sym: Sym; tiers: Tier[]; demo: boolean; label: string }[] = [
-  { id: 1, sym: "mTSLA", tiers: DEFAULT_TIERS, demo: false, label: "TSLA" },
-  { id: 2, sym: "mNVDA", tiers: DEFAULT_TIERS, demo: false, label: "NVDA" },
-  { id: 3, sym: "mSOL", tiers: DEFAULT_TIERS, demo: false, label: "SOL (always on)" },
-  { id: 4, sym: "mTSLA", tiers: DEMO_TIERS, demo: true, label: "TSLA DEMO ODDS" },
+  { id: 11, sym: "mTSLA", tiers: DEFAULT_TIERS, demo: false, label: "TSLA" },
+  { id: 12, sym: "mNVDA", tiers: DEFAULT_TIERS, demo: false, label: "NVDA" },
+  { id: 13, sym: "mSOL", tiers: DEFAULT_TIERS, demo: false, label: "SOL (always on)" },
+  { id: 14, sym: "mTSLA", tiers: DEMO_TIERS, demo: true, label: "TSLA DEMO ODDS" },
 ];
 const VAULT_SHARES = 100_000n * 1_000_000n; // 100k mock shares per stock
 const SELL_POOL_USDC = 1_000_000n * 1_000_000n; // 1M mUSDC the vault pays sellers from

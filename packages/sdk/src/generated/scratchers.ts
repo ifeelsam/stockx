@@ -10,7 +10,7 @@ export type Scratchers = {
     "name": "scratchers",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Stock Scratchers: VRF scratch cards paying tokenized stock"
+    "description": "Stock Scratchers: VRF holo packs paying tokenized stock"
   },
   "instructions": [
     {
@@ -4413,8 +4413,8 @@ export type Scratchers = {
             "type": "u8"
           },
           {
-            "name": "multiplier",
-            "type": "u16"
+            "name": "multiplierBps",
+            "type": "u32"
           },
           {
             "name": "shares",
@@ -4945,8 +4945,11 @@ export type Scratchers = {
         "kind": "struct",
         "fields": [
           {
-            "name": "multiplier",
-            "type": "u16"
+            "name": "multiplierBps",
+            "docs": [
+              "Payout multiplier in basis points (1× = 10,000), so Dust (0.2×) is exact."
+            ],
+            "type": "u32"
           },
           {
             "name": "weight",

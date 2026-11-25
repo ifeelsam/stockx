@@ -1,16 +1,28 @@
-import { DEFAULT_TIERS, tierFor, type Tier } from "./tiers.js";
+import { DEFAULT_TIERS, multiplierOf, RARITY_NAMES, tierFor, type RarityName, type Tier } from "./tiers.js";
 
-/** Panel symbols. Win symbol is chosen by the tier's multiplier; fillers never appear 3 times. */
-export const WIN_SYMBOL: Record<number, string> = { 1: "coin", 2: "bolt", 5: "star", 10: "gem", 50: "crown", 100: "rocket", 1000: "bull" };
+/** Triple symbol per rarity. Dust has no triple: it is a payout, not a win. */
+export const WIN_SYMBOL: Record<number, string> = {
+  10_000: "coin",
+  20_000: "bolt",
+  50_000: "star",
+  100_000: "gem",
+  500_000: "crown",
+  1_000_000: "rocket",
+  10_000_000: "bull",
+};
 export const FILLERS = ["leaf", "moon", "key", "cloud", "dice", "flame", "wave", "fish"] as const;
 
 export type CardArt = {
   tier: number;
+  rarity: RarityName;
+  multiplierBps: number;
+  /** 0.2, 1, 2, … (derived; bps is the on-chain truth) */
   multiplier: number;
+  /** True only from Common (1×) up. Dust returns 20¢ and is never shown as a win. */
   win: boolean;
   /** 9 panel symbols, row-major 3x3. */
   panels: string[];
-  /** Indices of the 3 matching panels (empty for a loss). */
+  /** Indices of the 3 matching panels (empty for Dust). */
   winningPanels: number[];
 };
 
@@ -32,9 +44,11 @@ function rng(seed: Uint8Array) {
 /** Deterministic art for a revealed card; the verify page recomputes this from the on-chain seed. */
 export function cardArt(seed: Uint8Array, tiers: Tier[] = DEFAULT_TIERS): CardArt {
   if (seed.length !== 32) throw new Error("seed must be 32 bytes");
+  if (tiers.length !== RARITY_NAMES.length) throw new Error("expected 8 rarity tiers");
   const tier = tierFor(seed, tiers);
-  const multiplier = tiers[tier].multiplier;
-  const win = multiplier > 0;
+  const multiplierBps = tiers[tier].multiplierBps;
+  const rarity = RARITY_NAMES[tier] ?? "Dust";
+  const win = multiplierBps >= 10_000;
   const rand = rng(seed);
   const pick = <T>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)];
 
@@ -47,7 +61,7 @@ export function cardArt(seed: Uint8Array, tiers: Tier[] = DEFAULT_TIERS): CardAr
   const panels: string[] = [];
   let winningPanels: number[] = [];
   if (win) {
-    const symbol = WIN_SYMBOL[multiplier] ?? pick(Object.values(WIN_SYMBOL));
+    const symbol = WIN_SYMBOL[multiplierBps] ?? pick(Object.values(WIN_SYMBOL));
     const slots = Array.from({ length: 9 }, (_, i) => i);
     for (let i = slots.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
@@ -59,5 +73,5 @@ export function cardArt(seed: Uint8Array, tiers: Tier[] = DEFAULT_TIERS): CardAr
   } else {
     for (let i = 0; i < 9; i++) panels.push(bag[i]);
   }
-  return { tier, multiplier, win, panels, winningPanels };
+  return { tier, rarity, multiplierBps, multiplier: multiplierOf(tiers[tier]), win, panels, winningPanels };
 }

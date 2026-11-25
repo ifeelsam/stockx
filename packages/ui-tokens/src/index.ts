@@ -1,24 +1,31 @@
-/** Design tokens shared by web (CSS vars / motion) and mobile (Reanimated / Skia). Original palette. */
+/**
+ * Design tokens shared by web (CSS vars / motion) and mobile (Reanimated / Skia).
+ * Holo-cards direction: #0D0B14 ground, #F2EFFA card stock, #9DF3FF accent,
+ * one hue per rarity. Type: Bricolage Grotesque (display) + Space Mono (numbers).
+ */
 
 export const colors = {
-  ink: "#0A0C10",
-  surface: "#12151C",
-  surfaceHi: "#1A1E28",
-  line: "#262B38",
-  text: "#F2F4F8",
-  textDim: "#8B93A7",
-  money: "#19E39A", // emerald: wins, balances
-  gold: "#F5C451", // jackpot / brand accent
-  danger: "#FF5D6C",
+  ink: "#0D0B14",
+  surface: "#15121F",
+  surfaceHi: "#1D1929",
+  line: "#2C2739",
+  text: "#F2EFFA",
+  textDim: "#9A93AE",
+  card: "#F2EFFA", // holo card stock
+  cardInk: "#171320",
+  accent: "#9DF3FF",
+  money: "#6EF7A8", // wins, balances
+  gold: "#F7D45C", // Grail / brand accent
+  danger: "#FF6B7A",
   warn: "#FFB547",
-  foil: "#2A2F3D", // scratch layer base
-  foilHi: "#3A4154",
+  foil: "#1A1626", // pack/foil base
+  foilHi: "#2A2438",
 } as const;
 
-export type TierKey = "lose" | "x1" | "x2" | "x5" | "x10" | "x50" | "x100" | "jackpot";
+export type TierKey = "dust" | "common" | "uncommon" | "rare" | "epic" | "legend" | "mythic" | "grail";
 
 /** Index = on-chain tier index in the default series. */
-export const TIER_KEYS: TierKey[] = ["lose", "x1", "x2", "x5", "x10", "x50", "x100", "jackpot"];
+export const TIER_KEYS: TierKey[] = ["dust", "common", "uncommon", "rare", "epic", "legend", "mythic", "grail"];
 
 export type TierStyle = {
   key: TierKey;
@@ -31,31 +38,33 @@ export type TierStyle = {
   symbol: string;
   /** reveal intensity bucket, drives animation choice */
   fx: "none" | "glow" | "burst" | "shake" | "jackpot";
+  /** how the payout is described to the player (Dust is never called a win) */
+  payout: string;
 };
 
 export const TIERS: Record<TierKey, TierStyle> = {
-  lose: { key: "lose", label: "No win", color: "#5B6377", glow: "#2A2F3D", symbol: "leaf", fx: "none" },
-  x1: { key: "x1", label: "Money back", color: "#7FD6B2", glow: "#19E39A", symbol: "coin", fx: "glow" },
-  x2: { key: "x2", label: "Double", color: "#4FD1E8", glow: "#22B8D6", symbol: "bolt", fx: "burst" },
-  x5: { key: "x5", label: "5x", color: "#6C8CFF", glow: "#4A6BFF", symbol: "star", fx: "burst" },
-  x10: { key: "x10", label: "10x", color: "#A67CFF", glow: "#8A52FF", symbol: "gem", fx: "burst" },
-  x50: { key: "x50", label: "50x", color: "#FF7AD1", glow: "#FF3DB8", symbol: "crown", fx: "shake" },
-  x100: { key: "x100", label: "100x", color: "#FF9A4D", glow: "#FF7A1A", symbol: "rocket", fx: "shake" },
-  jackpot: { key: "jackpot", label: "JACKPOT 1000x", color: "#F5C451", glow: "#FFD76A", symbol: "bull", fx: "jackpot" },
+  dust: { key: "dust", label: "Dust", color: "#8B8798", glow: "#4A4557", symbol: "leaf", fx: "none", payout: "20¢ back" },
+  common: { key: "common", label: "Common", color: "#9DF3FF", glow: "#5BD8EA", symbol: "coin", fx: "glow", payout: "money back" },
+  uncommon: { key: "uncommon", label: "Uncommon", color: "#6EF7A8", glow: "#2BCB7C", symbol: "bolt", fx: "burst", payout: "2×" },
+  rare: { key: "rare", label: "Rare", color: "#6C8CFF", glow: "#3F63FF", symbol: "star", fx: "burst", payout: "5×" },
+  epic: { key: "epic", label: "Epic", color: "#C084FC", glow: "#9B4DFF", symbol: "gem", fx: "burst", payout: "10×" },
+  legend: { key: "legend", label: "Legend", color: "#FF7AD1", glow: "#FF3DB8", symbol: "crown", fx: "shake", payout: "50×" },
+  mythic: { key: "mythic", label: "Mythic", color: "#FFA64D", glow: "#FF7A1A", symbol: "rocket", fx: "shake", payout: "100×" },
+  grail: { key: "grail", label: "Grail", color: "#F7D45C", glow: "#FFD76A", symbol: "bull", fx: "jackpot", payout: "1,000×" },
 };
 
-export const tierByIndex = (i: number): TierStyle => TIERS[TIER_KEYS[i] ?? "lose"];
+export const tierByIndex = (i: number): TierStyle => TIERS[TIER_KEYS[i] ?? "dust"];
 
-/** Map a multiplier to a tier style (works for custom series too). */
+/** Map a multiplier to a rarity style (works for custom series too). */
 export function tierByMultiplier(m: number): TierStyle {
-  if (m >= 1000) return TIERS.jackpot;
-  if (m >= 100) return TIERS.x100;
-  if (m >= 50) return TIERS.x50;
-  if (m >= 10) return TIERS.x10;
-  if (m >= 5) return TIERS.x5;
-  if (m >= 2) return TIERS.x2;
-  if (m >= 1) return TIERS.x1;
-  return TIERS.lose;
+  if (m >= 1000) return TIERS.grail;
+  if (m >= 100) return TIERS.mythic;
+  if (m >= 50) return TIERS.legend;
+  if (m >= 10) return TIERS.epic;
+  if (m >= 5) return TIERS.rare;
+  if (m >= 2) return TIERS.uncommon;
+  if (m >= 1) return TIERS.common;
+  return TIERS.dust;
 }
 
 /** Milliseconds. Same numbers drive motion (web) and Reanimated (mobile). */
@@ -65,7 +74,7 @@ export const timing = {
   base: 260,
   slow: 480,
   packStagger: 70, // per card when fanning out 10 cards
-  autoRevealDelay: 120,
+  flip: 620,
   countUp: 1100,
   confetti: 1800,
   jackpot: 6000,
@@ -79,9 +88,6 @@ export const easing = {
   spring: { stiffness: 380, damping: 26, mass: 0.9 },
 } as const;
 
-/** Fraction of the foil that must be cleared before we auto-reveal. */
-export const SCRATCH_REVEAL_THRESHOLD = 0.6;
-
 /** Haptic pattern per fx bucket: vibrate durations in ms (mobile + navigator.vibrate on web). */
 export const haptics: Record<TierStyle["fx"], number[]> = {
   none: [],
@@ -91,9 +97,9 @@ export const haptics: Record<TierStyle["fx"], number[]> = {
   jackpot: [60, 40, 60, 40, 60, 40, 120, 80, 250, 120, 400],
 };
 
-export const cardSize = { w: 300, h: 400, radius: 20 } as const;
+export const cardSize = { w: 300, h: 420, radius: 22 } as const;
 
-/** 24x24 line-glyph paths for the 15 panel symbols from the SDK's `cardArt` (stroke, no fill). Rendered per platform. */
+/** 24x24 line-glyph paths for the panel symbols from the SDK's `cardArt` (stroke, no fill). */
 export const SYMBOL_PATHS: Record<string, string> = {
   coin: "M12 3a9 9 0 100 18 9 9 0 000-18zm0 4v10m-2.5-7.5c0-1 1-1.5 2.5-1.5s2.5.5 2.5 1.5-1 1.5-2.5 1.5-2.5.5-2.5 1.5 1 1.5 2.5 1.5 2.5-.5 2.5-1.5",
   bolt: "M13 2L5 14h6l-1 8 8-12h-6z",

@@ -48,7 +48,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const [degraded, setDegraded] = useState<string[]>([]);
   const [usdc, setUsdc] = useState(0);
   const [rawCards, setRawCards] = useState<Awaited<ReturnType<typeof fetchPlayer>>["cards"]>([]);
-  const [scratched, setScratched] = useState<Set<number>>(new Set());
+  const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [stats, setStats] = useState<Game["stats"]>({ sold: 0, tierCounts: Array(8).fill(0), paidShares: 0 });
   const [setup, setSetup] = useState<NonNullable<Game["setup"]>["status"]>("checking");
@@ -137,10 +137,10 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
             art: seed ? cardArt(seed, s.tiers) : undefined,
             lockedPrice: Number(k.lockedPrice.toString()) / 1e8,
             shares: revealed ? Number(k.shares.toString()) / 1e6 : 0,
-            scratched: scratched.has(id),
+            flipped: flipped.has(id),
           } satisfies UiCard;
         }),
-    [rawCards, scratched],
+    [rawCards, flipped],
   );
 
   // ---- onboarding -------------------------------------------------------------------------------------
@@ -285,7 +285,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       cards,
       holdings,
       buy,
-      markScratched: (id) => setScratched((s) => new Set(s).add(id)),
+      markFlipped: (id) => setFlipped((s) => new Set(s).add(id)),
       claimAll,
       faucet,
       sell,

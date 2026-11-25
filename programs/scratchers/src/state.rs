@@ -16,7 +16,8 @@ pub struct Config {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Default, InitSpace, Debug, PartialEq)]
 pub struct Tier {
-    pub multiplier: u16,
+    /// Payout multiplier in basis points (1× = 10,000), so Dust (0.2×) is exact.
+    pub multiplier_bps: u32,
     pub weight: u32,
 }
 
@@ -62,13 +63,13 @@ impl Series {
         unreachable!("validate_table guarantees weights sum to total_weight")
     }
 
-    /// Σ multiplier·weight (RTP numerator over total_weight).
+    /// Σ multiplier_bps·weight; RTP = this ÷ (total_weight × 10,000).
     pub fn rtp_numerator(&self) -> u64 {
-        self.tiers.iter().map(|t| t.multiplier as u64 * t.weight as u64).sum()
+        self.tiers.iter().map(|t| t.multiplier_bps as u64 * t.weight as u64).sum()
     }
 
-    pub fn max_multiplier(&self) -> u16 {
-        self.tiers.iter().filter(|t| t.weight > 0).map(|t| t.multiplier).max().unwrap_or(0)
+    pub fn max_multiplier_bps(&self) -> u32 {
+        self.tiers.iter().filter(|t| t.weight > 0).map(|t| t.multiplier_bps).max().unwrap_or(0)
     }
 }
 
@@ -151,14 +152,15 @@ pub struct PriceFeed {
     pub bump: u8,
 }
 
-/// shares (1e-6 units) = multiplier × ticket_usd ÷ price. `price_e8`: USD per whole share, 1e8 fixed point.
-/// Floors (house-favouring).
-pub fn shares_for(multiplier: u16, ticket_usd_e6: u64, price_e8: u64) -> Option<u64> {
+/// shares (1e-6 units) = multiplier_bps × ticket_usd ÷ 10,000 ÷ price.
+/// `price_e8`: USD per whole share, 1e8 fixed point. Floors (house-favouring).
+pub fn shares_for(multiplier_bps: u32, ticket_usd_e6: u64, price_e8: u64) -> Option<u64> {
     if price_e8 == 0 {
         return None;
     }
-    let n = multiplier as u128 * ticket_usd_e6 as u128 * 100_000_000u128; // 1e6 decimals · 1e8 price scale / 1e6 ticket scale
-    u64::try_from(n / price_e8 as u128).ok()
+    let n = multiplier_bps as u128 * ticket_usd_e6 as u128 * 100_000_000u128;
+    let d = 10_000u128 * price_e8 as u128;
+    u64::try_from(n / d).ok()
 }
 
 #[cfg(test)]
@@ -170,7 +172,7 @@ mod sell_tests {
         assert_eq!(usdc_for_sale(1_000_000, 150 * 100_000_000), Some(149_250_000));
         assert_eq!(usdc_for_sale(0, 1), Some(0));
         // buying then selling the same shares at the same price never makes money
-        let shares = shares_for(1, 1_000_000, 248_31_000_000).unwrap();
+        let shares = shares_for(10_000, 1_000_000, 248_31_000_000).unwrap();
         assert!(usdc_for_sale(shares, 248_31_000_000).unwrap() < 1_000_000);
     }
 }
@@ -258,12 +260,14 @@ pub(crate) mod tests {
     #[test]
     fn shares_math() {
         // $1 ticket, $200/share, 1x = 0.005 share = 5000 base units
-        assert_eq!(shares_for(1, 1_000_000, 200 * 100_000_000), Some(5_000));
-        assert_eq!(shares_for(1000, 1_000_000, 200 * 100_000_000), Some(5_000_000));
+        assert_eq!(shares_for(10_000, 1_000_000, 200 * 100_000_000), Some(5_000));
+        assert_eq!(shares_for(10_000_000, 1_000_000, 200 * 100_000_000), Some(5_000_000));
         assert_eq!(shares_for(0, 1_000_000, 1), Some(0));
-        assert_eq!(shares_for(1, 1_000_000, 0), None);
+        assert_eq!(shares_for(10_000, 1_000_000, 0), None);
         // floors
-        assert_eq!(shares_for(1, 1_000_000, 300 * 100_000_000), Some(3_333));
+        assert_eq!(shares_for(10_000, 1_000_000, 300 * 100_000_000), Some(3_333));
+        // Plan §1: Dust (0.2×) on a $1 ticket at $412.35 is 0.000485 shares.
+        assert_eq!(shares_for(2_000, 1_000_000, 412_35_000_000), Some(485));
     }
 
     fn player_with_session(expiry: i64, cap: u64) -> (Player, Pubkey, Pubkey) {
@@ -295,10 +299,14 @@ pub(crate) mod tests {
     }
 
     pub fn default_series() -> Series {
-        let w = [(0, 61_858), (1, 25_000), (2, 10_000), (5, 2_000), (10, 1_000), (50, 100), (100, 40), (1000, 2)];
+        // Plan §1: Dust, Common, Uncommon, Rare, Epic, Legend, Mythic, Grail.
+        let w = [
+            (2_000, 76_025), (10_000, 12_500), (20_000, 8_333), (50_000, 2_000),
+            (100_000, 1_000), (500_000, 100), (1_000_000, 40), (10_000_000, 2),
+        ];
         let mut tiers = [Tier::default(); NUM_TIERS];
         for (t, (m, wt)) in tiers.iter_mut().zip(w) {
-            *t = Tier { multiplier: m, weight: wt };
+            *t = Tier { multiplier_bps: m, weight: wt };
         }
         Series {
             id: 0, stock_mint: Pubkey::default(), price_source: PriceSource::SelfPushed, feed: Pubkey::default(),
@@ -308,11 +316,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn weights_sum_and_rtp_is_exactly_76_percent() {
+    fn weights_sum_and_rtp_is_exactly_75371_percent() {
         let s = default_series();
         Series::validate_table(&s.tiers, s.total_weight).unwrap();
-        assert_eq!(s.rtp_numerator(), 76_000); // 76_000 / 100_000 = 76%
-        assert_eq!(s.max_multiplier(), 1000);
+        assert_eq!(s.rtp_numerator(), 753_710_000); // ÷ (100_000 × 10_000) = 75.371%
+        assert_eq!(s.max_multiplier_bps(), 10_000_000);
     }
 
     #[test]
@@ -331,12 +339,26 @@ pub(crate) mod tests {
     #[test]
     fn tier_selection_boundaries() {
         let s = default_series();
-        // cumulative: 61858 | 86858 | 96858 | 98858 | 99858 | 99958 | 99998 | 100000
-        for (r, tier) in [(0, 0), (61_857, 0), (61_858, 1), (86_857, 1), (86_858, 2), (96_858, 3),
-                          (98_858, 4), (99_858, 5), (99_958, 6), (99_997, 6), (99_998, 7), (99_999, 7),
+        // cumulative: 76025 | 88525 | 96858 | 98858 | 99858 | 99958 | 99998 | 100000
+        for (r, tier) in [(0, 0), (76_024, 0), (76_025, 1), (88_524, 1), (88_525, 2), (96_857, 2),
+                          (96_858, 3), (98_857, 3), (98_858, 4), (99_857, 4), (99_858, 5),
+                          (99_957, 5), (99_958, 6), (99_997, 6), (99_998, 7), (99_999, 7),
                           (100_000, 0)] {
             assert_eq!(s.tier_for(&seed_with(r)), tier, "r={r}");
         }
+    }
+
+    #[test]
+    fn every_rarity_pays_stock_and_dust_is_never_zero() {
+        let s = default_series();
+        // Plan §1 / §4: payouts are shares, so even Dust holds stock (0.2× at $412.35 = 485 units).
+        for t in s.tiers {
+            assert!(shares_for(t.multiplier_bps, s.ticket_usd_e6, 412_35_000_000).unwrap() > 0);
+        }
+        assert_eq!(shares_for(s.tiers[0].multiplier_bps, s.ticket_usd_e6, 412_35_000_000), Some(485));
+        // Dust is the most likely band and is < 1×, so it can never be dressed up as a win.
+        assert_eq!(s.tiers[0].weight, 76_025);
+        assert!(s.tiers[0].multiplier_bps < 10_000);
     }
 
     #[test]

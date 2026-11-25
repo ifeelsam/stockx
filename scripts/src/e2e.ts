@@ -3,7 +3,7 @@
  * session key → buy 10 → 10 VRF reveals → claim_all → shares on Solana.
  * Run AFTER `setup:devnet` (needs deployments/devnet.json) with the deployer funded.
  *
- *   SERIES=3   series to play (default 3 = mSOL, always on)
+ *   SERIES=13  series to play (default 13 = mSOL, always on)
  */
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToInstruction, getAccount, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
@@ -11,12 +11,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buyCardIx, CardState, fetchStats, fetchSellQuote, sell, signerFrom, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs,
-  depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc, DEFAULT_TIERS,
+  depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, seriesPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc,
 } from "@scratchers/sdk";
 import { exists, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
 
 const dep = JSON.parse(readFileSync(process.env.DEPLOYMENTS ?? join(import.meta.dirname, "../../deployments/devnet.json"), "utf8"));
-const seriesId = Number(process.env.SERIES ?? 3);
+const seriesId = Number(process.env.SERIES ?? 13);
 const series = dep.series.find((s: { id: number }) => s.id === seriesId);
 if (!series) throw new Error(`series ${seriesId} not in deployments`);
 
@@ -83,14 +83,17 @@ async function main() {
   const revealed = cards.filter((x) => x.state === CardState.Revealed);
   console.log(`\n  ${revealed.length} reveals in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   if (revealed.length !== 10) throw new Error("expected 10 VRF reveals");
-  for (const k of revealed) if (k.tier !== tierFor(Uint8Array.from(k.seed), DEFAULT_TIERS)) throw new Error(`card ${k.id}: tier not recomputable from seed`);
+  const seriesAccount = await base.account.series.fetch(seriesPda(seriesId), "confirmed");
+  for (const k of revealed) if (k.tier !== tierFor(Uint8Array.from(k.seed), seriesAccount.tiers)) throw new Error(`card ${k.id}: tier not recomputable from seed`);
   console.log("  ✓ every tier recomputes from its seed");
 
-  // 6. claim (commit + Magic Action) and check shares landed on Solana
-  const wins = revealed.filter((k) => BigInt(k.shares.toString()) > 0n);
-  await send(c.rollup, [await claimAllIx(rollup, session.publicKey, user.publicKey, seriesId, stock, c.validator)], [session], `claim_all (${wins.length} winning cards)`);
+  // 6. claim (commit + Magic Action) and check shares landed on Solana.
+  // claim_all takes at most 8 cards per call, so a 10-card pack needs two.
+  for (let i = 0; i < revealed.length; i += 8) {
+    await send(c.rollup, [await claimAllIx(rollup, session.publicKey, user.publicKey, seriesId, stock, c.validator)], [session], `claim_all batch ${i / 8 + 1}`);
+  }
   const stockAta = getAssociatedTokenAddressSync(stock, user.publicKey);
-  const want = wins.reduce((a, k) => a + BigInt(k.shares.toString()), 0n);
+  const want = revealed.reduce((a, k) => a + BigInt(k.shares.toString()), 0n);
   for (let i = 0; i < 60; i++) {
     const got = (await getAccount(c.base, stockAta).catch(() => null))?.amount ?? 0n;
     if (got >= want) {

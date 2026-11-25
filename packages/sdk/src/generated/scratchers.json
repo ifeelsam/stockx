@@ -4,7 +4,7 @@
     "name": "scratchers",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Stock Scratchers: VRF scratch cards paying tokenized stock"
+    "description": "Stock Scratchers: VRF holo packs paying tokenized stock"
   },
   "instructions": [
     {
@@ -4407,8 +4407,8 @@
             "type": "u8"
           },
           {
-            "name": "multiplier",
-            "type": "u16"
+            "name": "multiplier_bps",
+            "type": "u32"
           },
           {
             "name": "shares",
@@ -4939,8 +4939,11 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "multiplier",
-            "type": "u16"
+            "name": "multiplier_bps",
+            "docs": [
+              "Payout multiplier in basis points (1× = 10,000), so Dust (0.2×) is exact."
+            ],
+            "type": "u32"
           },
           {
             "name": "weight",

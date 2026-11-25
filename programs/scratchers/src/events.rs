@@ -14,7 +14,7 @@ pub struct CardRevealed {
     pub player: Pubkey,
     pub card_id: u64,
     pub tier: u8,
-    pub multiplier: u16,
+    pub multiplier_bps: u32,
     pub shares: u64,
     pub seed: [u8; 32],
 }

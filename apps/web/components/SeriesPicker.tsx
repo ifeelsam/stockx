@@ -14,10 +14,10 @@ export function SeriesPicker({ value, onChange }: { value: number; onChange: (id
           <button
             key={s.id}
             onClick={() => onChange(s.id)}
-            className={`rounded-2xl border p-4 text-left transition ${on ? "border-money bg-surface-hi" : "border-line bg-surface hover:bg-surface-hi"}`}
+            className={`rounded-2xl border p-4 text-left transition ${on ? "border-accent bg-surface-hi" : "border-line bg-surface hover:bg-surface-hi"}`}
           >
             <div className="flex items-center justify-between">
-              <Symbol name={s.feed === "SOL" ? "bolt" : s.feed === "TSLA" ? "rocket" : "gem"} color={on ? "#19E39A" : "#8B93A7"} size={28} />
+              <Symbol name={s.feed === "SOL" ? "bolt" : s.feed === "TSLA" ? "rocket" : "gem"} color={on ? "#6EF7A8" : "#9A93AE"} size={28} />
               {s.demo && <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-gold">DEMO ODDS</span>}
               {paused && <span className="rounded bg-warn/20 px-1.5 py-0.5 text-[10px] font-bold text-warn">PAUSED</span>}
             </div>

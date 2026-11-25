@@ -18,7 +18,7 @@ export type UiCard = {
   lockedPrice: number;
   /** shares won (float, 6 decimals) */
   shares: number;
-  scratched: boolean;
+  flipped: boolean;
 };
 export type Holding = { ticker: string; feed: "TSLA" | "NVDA" | "SOL"; shares: number; costUsd: number };
 export type Prices = Record<"TSLA" | "NVDA" | "SOL", number>;
@@ -37,7 +37,7 @@ export type Game = {
   cards: UiCard[];
   holdings: Holding[];
   buy(seriesId: number, n: number): Promise<number[]>;
-  markScratched(id: number): void;
+  markFlipped(id: number): void;
   claimAll(): Promise<void>;
   faucet(): Promise<void>;
   sell(ticker: string, shares: number): void;
@@ -120,7 +120,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const fresh: UiCard[] = Array.from({ length: n }, () => {
         const id = nextId.current++;
         ids.push(id);
-        return { id, seriesId, state: "pending", lockedPrice: price, shares: 0, scratched: false };
+        return { id, seriesId, state: "pending", lockedPrice: price, shares: 0, flipped: false };
       });
       setUsdc((u) => u - n * s.ticketUsd);
       setCards((c) => [...c, ...fresh]);
@@ -130,7 +130,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         await sleep(700 + Math.random() * 1400);
         const seed = crypto.getRandomValues(new Uint8Array(32));
         const art = cardArt(seed, s.tiers);
-        const shares = art.multiplier > 0 ? Number(sharesFor(art.multiplier, BigInt(s.ticketUsd * 1e6), BigInt(Math.round(price * 1e8)))) / 1e6 : 0;
+        // Every rarity holds stock, Dust included.
+        const shares = Number(sharesFor(art.multiplierBps, BigInt(s.ticketUsd * 1e6), BigInt(Math.round(price * 1e8)))) / 1e6;
         setCards((cs) => cs.map((x) => (x.id === card.id ? { ...x, state: "revealed", seed, art, shares } : x)));
         setStats((st) => {
           const tc = [...st.tierCounts];
@@ -143,7 +144,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [usdc, marketClosed],
   );
 
-  const markScratched = useCallback((id: number) => setCards((cs) => cs.map((c) => (c.id === id ? { ...c, scratched: true } : c))), []);
+  const markFlipped = useCallback((id: number) => setCards((cs) => cs.map((c) => (c.id === id ? { ...c, flipped: true } : c))), []);
 
   const claimAll = useCallback(async () => {
     const claimable = cards.filter((c) => c.state === "revealed");
@@ -188,8 +189,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Game>(
-    () => ({ backend: "mock", usdc, prices, history, marketClosed, setMarketClosed, degraded, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats }),
-    [usdc, prices, history, marketClosed, degraded, cards, holdings, buy, markScratched, claimAll, faucet, sell, stats],
+    () => ({ backend: "mock", usdc, prices, history, marketClosed, setMarketClosed, degraded, cards, holdings, buy, markFlipped, claimAll, faucet, sell, stats }),
+    [usdc, prices, history, marketClosed, degraded, cards, holdings, buy, markFlipped, claimAll, faucet, sell, stats],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

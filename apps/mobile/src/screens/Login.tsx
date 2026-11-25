@@ -53,7 +53,7 @@ export function Login() {
     <View style={[ui.screen, ui.pad, { justifyContent: "center", gap: 18 }]}>
       <View>
         <Text style={{ color: colors.gold, fontWeight: "700", letterSpacing: 2, fontSize: 12 }}>ENTERTAINMENT × FINANCE</Text>
-        <Text style={[ui.h1, { fontSize: 38, lineHeight: 42 }]}>Scratch a $1 card.{"\n"}<Text style={{ color: colors.money }}>Win real stock.</Text></Text>
+        <Text style={[ui.h1, { fontSize: 38, lineHeight: 42 }]}>Rip a $1 pack.{"\n"}<Text style={{ color: colors.money }}>Pull real stock.</Text></Text>
       </View>
       {!w.ready ? <ActivityIndicator color={colors.money} /> : (
         <>

@@ -8,7 +8,7 @@ export function vibrate(pattern: number[]) {
   if (pattern.length && typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(pattern);
 }
 
-/** Tier-scaled reveal effect. Returns the style so callers can add shake / jackpot overlay. */
+/** Rarity-scaled reveal effect. Dust and Common stay quiet; celebration starts at Uncommon. */
 export function revealFx(multiplier: number): TierStyle {
   const t = tierByMultiplier(multiplier);
   vibrate(haptics[t.fx]);

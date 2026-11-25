@@ -19,7 +19,7 @@ export function Nav() {
     <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
         <Link href="/" className="font-black tracking-tight">
-          <span className="text-gold">Stock</span> Scratchers
+          <span className="text-accent">Stock</span> Scratchers
         </Link>
         <nav className="hidden gap-4 text-sm sm:flex">
           {LINKS.map(([h, l]) => (

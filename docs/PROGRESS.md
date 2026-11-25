@@ -2,7 +2,25 @@
 
 **Submission deadline: owner says not to worry about it (2026-11-24); keep building, no code-freeze planning.**
 
-## Devnet verification (2026-11-24)
+## 2026-11-26: PLAN.md rarity + holo-pack refactor (current state)
+
+**Done and green**
+- **New prize table on chain and in the SDK**: `Tier { multiplier_bps: u32, weight: u32 }` with Dust/Common/Uncommon/Rare/Epic/Legend/Mythic/Grail (2,000 → 10,000,000 bps; weights 76,025 / 12,500 / 8,333 / 2,000 / 1,000 / 100 / 40 / 2). Weight sum 100,000, `Σ weight×bps` 753,710,000 → **75.371% RTP**. `shares_for` divides by 10,000; buy/reserve/reveal/events all carry `multiplier_bps`.
+- **Dust pays.** Every rarity produces shares, so `claim_all` batches Dust like any other card. Rust test pins the Plan's $1 @ $412.35 → 485-unit Dust vector; MagicSVM's claim test asserts Common 5,000 + Dust 1,000 are both paid, and that accounting releases 6,000.
+- **Checks**: `cargo test -p scratchers` 13/13, MagicSVM 21/21 (`cargo +1.95.0-sbpf-solana-v1.57 test`, after `anchor build --arch v0`), SDK 20/20, ui-tokens 1/1, `pnpm -r typecheck` green (web, mobile, app-core, scripts, keeper).
+- **IDL + generated client regenerated** (`scripts/gen-sdk.sh`) for the new `Tier` layout and events.
+- **Series 11–14**: setup script and app-core create/expect TSLA 11, NVDA 12, SOL 13, TSLA demo 14. Series 1–4 are unreachable under the new layout (documented in DECISIONS.md). Default UI series = 11, demo = 14.
+- **Holo pack replaces scratch**: web `HoloCard` (foil front, tap-to-flip, rarity-scaled FX, no celebration for Dust/Common) and mobile `HoloCard` (Reanimated flip, haptics, CoinBurst from Uncommon up). `ScratchCard` (canvas + Skia) and the scratch threshold token are deleted; `flipped`/`markFlipped` replaces `scratched`/`markScratched` in app-core. `/play`, `/prizes`, `/verify`, `/dashboard` and the mobile Prizes/Verify screens now speak rarities; the landing page hero is a Grail card.
+- **Web design**: holo palette (`#0D0B14` ground, `#F2EFFA` card stock, `#9DF3FF` accent), Bricolage Grotesque + Space Mono, foil/sheen/dust CSS, tier badges. UI copy states 75.37% RTP, “every pack holds stock”, and “Dust · 20¢ back, not a win”.
+
+**Still to do before calling the refactor shipped**
+- Deploy the upgraded program to devnet, re-run `setup:devnet` (creates 11–14), confirm the old 1–4 accounts are simply ignored, and record the upgrade in DEPLOYMENTS.md.
+- Re-run `e2e:devnet` against `SERIES=13` on the new layout (script now fetches the on-chain table for verification and handles the 8-card claim batch limit).
+- Device pass on the mobile holo flip (Seeker/emulator) and a browser pass of web `/play` (both currently typecheck only).
+- Update ARCHITECTURE.md if any diagram still says “scratch”.
+
+## Devnet verification (2026-11-24, pre-refactor)
+
 
 **Live and verified on devnet** (program `EQaiygf…`, rollup devnet-as): `pnpm --filter @scratchers/scripts e2e:devnet` passes end to end: signup → delegate Player → eSPL `delegateSpl` of 50 mUSDC → Magic-ATA treasury → `create_session` → `deposit_usdc` → `buy_card ×10` signed only by the session key → 10 VRF reveals (arrive in about a second) → every tier recomputes from its seed → `claim_all` (commit + Magic Action) → shares land on Solana exactly (92,939 units expected = received) with no keeper repair needed. The same script then reads `Stats` back from the rollup (counters match) and sells the shares to the vault via `sell_to_vault` at the keeper-posted quote (both verified).
 

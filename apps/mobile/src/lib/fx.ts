@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { haptics, tierByMultiplier, type TierStyle } from "@scratchers/ui-tokens";
 
-/** Tier-scaled haptics. `ui-tokens` gives a vibrate-duration pattern; map it onto expo-haptics impacts. */
+/** Rarity-scaled haptics. Dust has an empty pattern (no buzz); `ui-tokens` gives vibrate durations, mapped onto expo-haptics impacts. */
 export async function revealFx(multiplier: number): Promise<TierStyle> {
   const t = tierByMultiplier(multiplier);
   const pattern = haptics[t.fx];

@@ -56,7 +56,7 @@ pub fn buy_card(ctx: Context<BuyCard>, n: u8, max_price: u64, caller_seed: [u8; 
 
     let cost = s.ticket_usd_e6.checked_mul(n as u64).ok_or(ScratchError::InsufficientBalance)?;
     // Worst case liability per card at the locked price; held until the callback reveals the tier.
-    let reserve = shares_for(s.max_multiplier(), s.ticket_usd_e6, price.price).ok_or(ScratchError::PriceOutOfBand)?;
+    let reserve = shares_for(s.max_multiplier_bps(), s.ticket_usd_e6, price.price).ok_or(ScratchError::PriceOutOfBand)?;
     let reserve_total = reserve.checked_mul(n as u64).ok_or(ScratchError::InsufficientInventory)?;
 
     let vault = &mut ctx.accounts.vault_state;
@@ -167,8 +167,8 @@ pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u6
     require!(card.series == s.id, ScratchError::BadState);
 
     let tier = s.tier_for(&randomness);
-    let multiplier = s.tiers[tier].multiplier;
-    let actual = shares_for(multiplier, s.ticket_usd_e6, card.locked_price).ok_or(ScratchError::PriceOutOfBand)?;
+    let multiplier_bps = s.tiers[tier].multiplier_bps;
+    let actual = shares_for(multiplier_bps, s.ticket_usd_e6, card.locked_price).ok_or(ScratchError::PriceOutOfBand)?;
     let release = card.shares.checked_sub(actual).ok_or(ScratchError::BadState)?;
 
     let vault = &mut ctx.accounts.vault_state;
@@ -182,7 +182,7 @@ pub fn vrf_callback(ctx: Context<VrfCallback>, randomness: [u8; 32], card_id: u6
     card.shares = actual;
     card.revealed_ts = Clock::get()?.unix_timestamp;
     card.state = CardState::Revealed as u8;
-    emit!(CardRevealed { player: ctx.accounts.player.key(), card_id, tier: tier as u8, multiplier, shares: actual, seed: randomness });
+    emit!(CardRevealed { player: ctx.accounts.player.key(), card_id, tier: tier as u8, multiplier_bps, shares: actual, seed: randomness });
     Ok(())
 }
 

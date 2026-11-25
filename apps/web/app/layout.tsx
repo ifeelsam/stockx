@@ -6,10 +6,10 @@ import { Nav } from "@/components/Nav";
 import { Banners } from "@/components/Banners";
 
 export const metadata: Metadata = {
-  title: "Stock Scratchers: scratch cards that pay in stock",
-  description: "Buy a $1 scratch card, win tokenized stock. Provably fair via MagicBlock VRF. Devnet demo.",
+  title: "Stock Scratchers: rip packs, keep tokenized stock",
+  description: "Rip a holo pack with USDC and keep the tokenized stock inside, from Dust to a 1,000× Grail. Provably fair via MagicBlock VRF. Devnet demo.",
 };
-export const viewport: Viewport = { themeColor: "#0a0c10" };
+export const viewport: Viewport = { themeColor: "#0D0B14" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <Banners />
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
           <footer className="mx-auto max-w-6xl px-4 pb-10 pt-4 text-xs text-dim">
-            Devnet demo. Mock tokens only, no real money. Prices are relayed by our keeper (a trust assumption, see README).
+            Devnet demo. Mock tokens only, no real money. Every pack holds tokenized stock; prices are relayed by our keeper (a trust assumption, see README).
           </footer>
         </Providers>
       </body>
