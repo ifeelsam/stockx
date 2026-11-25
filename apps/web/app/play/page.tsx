@@ -57,7 +57,7 @@ export default function Play() {
           Buy 10 · ${s.ticketUsd * 10}
         </button>
         <button onClick={() => run(g.faucet)} className="rounded-xl border border-line px-4 py-3 text-sm hover:bg-surface-hi">
-          Get test funds (+50 mUSDC)
+          Get test funds (+100 mUSDC)
         </button>
         {paused && <span className="text-sm text-warn">Price paused: waiting for a fresh price.</span>}
         {err && <span className="text-sm text-danger">{err}</span>}

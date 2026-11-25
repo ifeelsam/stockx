@@ -33,7 +33,7 @@ export function loadConfig(env = process.env) {
     hermesAuthHeader: env.HERMES_AUTH_HEADER,
     repairGraceMs: Number(env.REPAIR_GRACE_MS ?? 20_000),
     faucetOrigin: env.FAUCET_ORIGIN ?? "*",
-    faucetCooldownMs: Number(env.FAUCET_COOLDOWN_MS ?? 3_600_000),
+    faucetCooldownMs: Number(env.FAUCET_COOLDOWN_MS ?? 60_000),
     refillStock: env.REFILL_STOCK === "1", // devnet mock refill only
   };
 }

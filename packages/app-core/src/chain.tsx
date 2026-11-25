@@ -170,12 +170,15 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
 
   /** A fresh wallet has no SOL for rent/fees: ask the keeper faucet (SOL + mUSDC) before the first transaction. */
   const ensureFunds = useCallback(async () => {
-    if ((await c.base.getBalance(user, "confirmed")) >= 100_000_000) return;
+    // new account: needs SOL for rent/fees and its starting 100 mUSDC (nothing in the wallet or on the rollup yet)
+    const needsSol = (await c.base.getBalance(user, "confirmed")) < 100_000_000;
+    const needsUsdc = (await baseUsdc()) === 0n && (await c.rollup.getAccountInfo(playerPda(user)).catch(() => null)) === null;
+    if (!needsSol && !needsUsdc) return;
     setStep("funding");
     const r = await fetch(`${keeperUrl}/faucet`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet: user.toBase58() }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({ error: r.statusText }))).error ?? "faucet failed");
     for (let i = 0; i < 20 && (await c.base.getBalance(user, "confirmed")) < 100_000_000; i++) await sleep(1000);
-  }, [c, user, keeperUrl]);
+  }, [c, user, keeperUrl, baseUsdc]);
 
   const run = useCallback(async () => {
     setError(null);

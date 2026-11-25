@@ -170,7 +170,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const faucet = useCallback(async () => {
     await sleep(500);
-    setUsdc((u) => u + 50);
+    setUsdc((u) => u + 100);
   }, []);
 
   const sell = useCallback((ticker: string, shares: number) => {
