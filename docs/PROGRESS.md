@@ -13,9 +13,13 @@
 - **Holo pack replaces scratch**: web `HoloCard` (foil front, tap-to-flip, rarity-scaled FX, no celebration for Dust/Common) and mobile `HoloCard` (Reanimated flip, haptics, CoinBurst from Uncommon up). `ScratchCard` (canvas + Skia) and the scratch threshold token are deleted; `flipped`/`markFlipped` replaces `scratched`/`markScratched` in app-core. `/play`, `/prizes`, `/verify`, `/dashboard` and the mobile Prizes/Verify screens now speak rarities; the landing page hero is a Grail card.
 - **Web design**: holo palette (`#0D0B14` ground, `#F2EFFA` card stock, `#9DF3FF` accent), Bricolage Grotesque + Space Mono, foil/sheen/dust CSS, tier badges. UI copy states 75.37% RTP, “every pack holds stock”, and “Dust · 20¢ back, not a win”.
 
+**Live on devnet (2026-11-26):** program upgraded twice (slot 526281244), series 11–14 created, `SERIES=11 e2e:devnet` passes: 10 buys → 10 VRF reveals → `claim_all` in batches of 8 + 2 → shares arrive exactly via Magic Action → `Stats` match → `sell_to_vault`. First run found `claim_all` of 8 cards exceeding the validator intent limit; fixed (DECISIONS.md).
+
+**Open: per-card cost.** Each payout rents a receipt (772,160 lamports) plus a 5,000-lamport action fee, paid from the player's side; at an assumed $150/SOL that is about 12¢ against a 24.6¢ edge on a $1 ticket. VRF on the ephemeral queue is free. Needs receipt rent reclaim or a price change before any mainnet use.
+
 **Still to do before calling the refactor shipped**
-- Deploy the upgraded program to devnet, re-run `setup:devnet` (creates 11–14), confirm the old 1–4 accounts are simply ignored, and record the upgrade in DEPLOYMENTS.md.
-- Re-run `e2e:devnet` against `SERIES=13` on the new layout (script now fetches the on-chain table for verification and handles the 8-card claim batch limit).
+- Finish matching the design canvas (web, then mobile).
+- Restart the keeper so payout repair knows series 11–14.
 - Device pass on the mobile holo flip (Seeker/emulator) and a browser pass of web `/play` (both currently typecheck only).
 - Update ARCHITECTURE.md if any diagram still says “scratch”.
 

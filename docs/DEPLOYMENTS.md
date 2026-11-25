@@ -5,6 +5,11 @@
 | 2026-11-24 | Program deploy #1 | `EQaiygfGRcn53N3EEMArDapzcw54iZL6UcuTpSPu2Ygn` (ProgramData `F9qKVXYKTz5csf9PjzV8SAVdux99PUMpYum2pDe3o2cH`, upgrade authority = deployer `Bo7dijSQzznSVmdy7jY622xrUdekfZgQyJU2dFcNbNvT`) | slot 525813302, tx `4zdGMQ3UVNWEU4UxamqS…` (truncated; full signature via `solana program show`/explorer) | `57c30cb` |
 | 2026-11-24 | `setup:devnet` | mints, config, 3 feeds, 4 series, vaults, quotes, stats, delegation, rollup `sync_inventory`, Magic-ATA treasury | see `deployments/devnet.json` | `57c30cb` |
 | 2026-11-24 | Program upgrade #2 (separate `[treasury]` authority PDA; program data extended +10,240 bytes) | same program id | slot 525835788, tx `2jtMdhbstmg9JaJxLEpj…` (truncated) | `2dddcb6` |
+| 2026-11-26 | Program upgrade #3 (rarity table, `multiplier_bps`) | same program id | slot 526280136, tx `4SGiTeKHw1vRiXZKiWcr…` (truncated) | `f574237` |
+| 2026-11-26 | `setup:devnet`: series 11-14 + stats, delegated (series 1-4 retired) | see `deployments/devnet.json` | | `51f1e8d` |
+| 2026-11-26 | Program upgrade #4 (100k CU per payout action) | same program id | slot 526281244, tx `285UH17RZm3Mq3WmRM33…` (truncated) | `d3ab67b` |
+
+Upgrade tip: the public devnet RPC rate-limits program uploads; use `-u https://rpc.magicblock.app/devnet --use-rpc --buffer <kept keypair>`.
 
 Rollup validator: `MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57` (devnet-as). Binary 739,912 bytes, rent 3.76 SOL.
 
