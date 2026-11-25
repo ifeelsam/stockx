@@ -124,6 +124,8 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     () =>
       rawCards
         .filter((k) => k.state !== CardState.Settled && k.state !== CardState.Cancelled)
+        // cards of retired series (1-4) cannot be claimed: never show them under another series' table
+        .filter((k) => dep.series.some((x) => x.id === k.series))
         .map((k) => {
           const id = Number(k.id.toString());
           const revealed = k.state === CardState.Revealed || k.state === CardState.ClaimRequested;
@@ -140,7 +142,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
             flipped: flipped.has(id),
           } satisfies UiCard;
         }),
-    [rawCards, flipped],
+    [rawCards, flipped, dep],
   );
 
   // ---- onboarding -------------------------------------------------------------------------------------
