@@ -80,7 +80,7 @@ export function CardBack({ rarity = "dust", tease = false, width = 286 }: { rari
           }}
         >
           <LogoMark size={108} />
-          <Wordmark className="text-[30px] text-text" />
+          <Wordmark className="text-[30px]" />
         </div>
       </div>
     </Scaled>

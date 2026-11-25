@@ -1,7 +1,6 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
-import { colors, LOGO } from "@scratchers/ui-tokens";
-import { font } from "../theme";
+import { colors, LOGO, WORDMARK } from "@scratchers/ui-tokens";
 
 export function LogoMark({ size = 32 }: { size?: number }) {
   return (
@@ -19,10 +18,19 @@ export function LogoMark({ size = 32 }: { size?: number }) {
   );
 }
 
+/** `size` works like a font size. */
 export const Wordmark = ({ size = 22 }: { size?: number }) => (
-  <Text numberOfLines={1} style={{ fontFamily: font.heavy, fontSize: size, letterSpacing: -size * 0.05, color: colors.text, includeFontPadding: false }}>
-    <Text style={{ color: colors.accent }}>rip</Text>stokx
-  </Text>
+  <Svg width={size * WORDMARK.w} height={size * WORDMARK.h} viewBox={WORDMARK.viewBox}>
+    <Defs>
+      <LinearGradient id="rip" gradientUnits="userSpaceOnUse" x1={WORDMARK.ripX[0]} y1="0" x2={WORDMARK.ripX[1]} y2="0">
+        <Stop offset="0" stopColor={WORDMARK.rainbow[0]} />
+        <Stop offset="0.55" stopColor={WORDMARK.rainbow[1]} />
+        <Stop offset="1" stopColor={WORDMARK.rainbow[2]} />
+      </LinearGradient>
+    </Defs>
+    <Path d={WORDMARK.rip} fill="url(#rip)" />
+    <Path d={WORDMARK.stokx} fill={colors.accent} />
+  </Svg>
 );
 
 /** Mark and wordmark side by side, announced as one name. */
