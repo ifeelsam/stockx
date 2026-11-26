@@ -15,8 +15,6 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
   const { program, base, rollup, keeper, deployments, graceMs } = o;
   const watched = new Set<string>(); // Player PDAs with unsettled claims
   const firstSeen = new Map<string, Map<bigint, number>>();
-  // The sweep reads the committed base snapshot, which lags the rollup: remember what we already settled there.
-  const settledHere = new Set<string>();
   const mintBySeries = new Map(deployments.series.map((s) => [s.id, new PublicKey(deployments.mints[s.stock])]));
   const parser = new EventParser(PROGRAM_ID, program.coder);
 
@@ -26,45 +24,55 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
     }
   }, "confirmed");
 
-  // Best effort: after a restart, find players that already have unsettled claims.
-  rollup.getProgramAccounts(PROGRAM_ID, { filters: [{ dataSize: program.account.player.size }] })
-    .then((accs) => accs.forEach((a) => watched.add(a.pubkey.toBase58())))
-    .catch((e) => log("warn", "player discovery unavailable; relying on events", { err: (e as Error).message }));
+  // After a restart or a dropped websocket, find players that have unsettled claims.
+  // ponytail: scans every Player each minute; index claim events instead once there are thousands.
+  const discover = () =>
+    rollup.getProgramAccounts(PROGRAM_ID, { filters: [{ dataSize: program.account.player.size }] })
+      .then((accs) => accs.forEach((a) => watched.add(a.pubkey.toBase58())))
+      .catch((e) => log("warn", "player discovery unavailable; relying on events", { err: (e as Error).message }));
+  discover();
 
+  let busy = false; // a slow sweep must not overlap the next and send the same repair twice
   async function sweep() {
+    if (busy) return;
+    busy = true;
     for (const key of [...watched]) {
       try {
-        const info = await base.getAccountInfo(new PublicKey(key), "confirmed"); // committed snapshot
+        // The rollup copy is authoritative. The committed base snapshot lands seconds after the claim event,
+        // so judging by it would forget the player before there is anything to repair.
+        const info = await rollup.getAccountInfo(new PublicKey(key), "confirmed");
         if (!info) { watched.delete(key); continue; }
         const player = program.coder.accounts.decode("player", info.data);
-        const cards = (player.cards as any[]).filter((c) => c.state === CardState.ClaimRequested && !settledHere.has(`${key}:${c.id}`));
+        const cards = (player.cards as any[]).filter((c) => c.state === CardState.ClaimRequested);
         if (cards.length === 0) { watched.delete(key); firstSeen.delete(key); continue; }
         const payouts = await base.getMultipleAccountsInfo(cards.map((c) => payoutPda(new PublicKey(key), BigInt(c.id.toString()))));
         const lite: CardLite[] = cards.map((c, i) => ({ id: BigInt(c.id.toString()), state: c.state, seriesId: c.series, paidOut: payouts[i] !== null }));
         const seen = firstSeen.get(key) ?? new Map<bigint, number>();
         firstSeen.set(key, seen);
         for (const a of planRepairs(lite, seen, Date.now(), graceMs)) {
-          if (a.kind === "pay_out") {
-            const mint = mintBySeries.get(a.seriesId)!;
-            const sig = await sendIx(base, keeper, [await payOutIx(program, keeper.publicKey, player.authority, a.seriesId, mint, a.cardId)]);
-            log("info", "pay_out repaired", { player: key, card: a.cardId.toString(), sig });
-          } else {
-            try {
+          try {
+            if (a.kind === "pay_out") {
+              const mint = mintBySeries.get(a.seriesId)!;
+              const sig = await sendIx(base, keeper, [await payOutIx(program, keeper.publicKey, player.authority, a.seriesId, mint, a.cardId)]);
+              log("info", "pay_out repaired", { player: key, card: a.cardId.toString(), sig });
+            } else {
               const sig = await sendIx(rollup, keeper, [await markSettledIx(program, player.authority, a.cardId)]);
               log("info", "slot settled", { player: key, card: a.cardId.toString(), sig });
-            } catch (e) {
-              // 0x177f = BadState: the rollup copy is already Settled (our base snapshot is just stale)
-              if (!/0x177f/.test((e as Error).message)) throw e;
             }
-            settledHere.add(`${key}:${a.cardId}`);
+          } catch (e) {
+            // 0x177f = BadState on mark_settled: someone else (a client) settled the card first
+            if (a.kind === "mark_settled" && /0x177f/.test((e as Error).message)) continue;
+            log("error", "repair failed", { player: key, card: a.cardId.toString(), err: (e as Error).message });
           }
         }
       } catch (e) {
         log("error", "repair sweep failed", { player: key, err: (e as Error).message });
       }
     }
+    busy = false;
   }
   const t = setInterval(sweep, 5000);
+  const d = setInterval(discover, 60_000);
   log("info", "payout repair started", { graceMs });
-  return () => clearInterval(t);
+  return () => (clearInterval(t), clearInterval(d));
 }
