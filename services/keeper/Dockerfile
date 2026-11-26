@@ -8,5 +8,5 @@ RUN pnpm install --frozen-lockfile --filter @scratchers/keeper...
 RUN pnpm --filter @scratchers/sdk build
 ENV PORT=8787 DEPLOYMENTS=/repo/deployments/devnet.json
 EXPOSE 8787
-# Secrets via env (never baked in): KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, HERMES_AUTH_HEADER
+# Secrets via env (never baked in): KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, PYTH_PRO_TOKEN
 CMD ["pnpm", "--filter", "@scratchers/keeper", "start"]

@@ -1,14 +1,17 @@
+# Deploy from the repo root. --ha=false matters: two keepers fight over prices.
+#   fly deploy . -c services/keeper/fly.toml --dockerfile services/keeper/Dockerfile --ha=false
+# Secrets, set once with `fly secrets set`: KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, PYTH_PRO_TOKEN
 app = "stock-scratchers-keeper"
 primary_region = "sin"
 
 [build]
-  # deploy from the repo root: fly deploy -c services/keeper/fly.toml --dockerfile services/keeper/Dockerfile
   dockerfile = "Dockerfile"
 
 [env]
   PORT = "8787"
-  PRICE_SOURCE = "hermes"   # "dev" = synthetic random walk (demo only)
-  REFILL_STOCK = "1"        # devnet mock refill
+  PRICE_SOURCE = "pythpro"            # public Hermes answers 401
+  KEEPER_HOLD_FEEDS = "mTSLA,mNVDA"   # devnet only: keep unsourced feeds fresh at their last price
+  REFILL_STOCK = "1"                  # devnet mock refill
 
 [http_service]
   internal_port = 8787
@@ -20,3 +23,7 @@ primary_region = "sin"
   path = "/healthz"
   interval = "15s"
   timeout = "3s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
