@@ -1,12 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { easing, timing, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
 import { isPaused, seriesById, useGame, VISIBLE_SERIES, type UiCard } from "@scratchers/app-core";
 import { CardBack, Gem, HoloCard } from "@/components/HoloCard";
 import { PackRip } from "@/components/PackRip";
 import { JackpotOverlay } from "@/components/JackpotOverlay";
-import { cardView, money } from "@/lib/cards";
+import { RaritySplash } from "@/components/RaritySplash";
+import { totalWeight } from "@scratchers/sdk";
+import { cardView, money, oddsText } from "@/lib/cards";
 import { revealFx } from "@/lib/fx";
 
 const W = 172;
@@ -20,6 +22,7 @@ export default function Rip() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [grail, setGrail] = useState<Shown | null>(null);
+  const [splash, setSplash] = useState<Shown | null>(null);
 
   // ?s=14&n=1 from the Packs page
   useEffect(() => {
@@ -57,8 +60,17 @@ export default function Rip() {
     for (const c of cards) g.markFlipped(c.id);
     const best = cards.reduce((a, b) => (b.art.multiplierBps > a.art.multiplierBps ? b : a));
     revealFx(best.art.multiplier);
-    if (best.art.multiplierBps >= 10_000_000) setGrail(best);
+    if (best.art.multiplierBps >= 20_000) setSplash(best); // Uncommon and better; Dust and Common stay quiet
   };
+
+  const closeSplash = useCallback(() => {
+    setSplash((c) => {
+      // the Grail also gets its own screen, with the proof link
+      if (c && c.art.multiplierBps >= 10_000_000) setGrail(c);
+      return null;
+    });
+  }, []);
+  const sv = splash && cardView(splash, g.prices);
 
   const views = flipped.map((c) => cardView(c, g.prices));
   const total = views.reduce((a, v) => a + v.usd, 0);
@@ -188,6 +200,16 @@ export default function Rip() {
         </div>
       )}
 
+      {splash && sv && (
+        <RaritySplash
+          rarity={sv.tier.key}
+          feed={sv.series.feed}
+          mult={sv.face.mult}
+          usd={sv.face.usd}
+          odds={`${sv.series.demo ? "DEMO ODDS · " : ""}${oddsText(sv.series.tiers[splash.art.tier].weight, totalWeight(sv.series.tiers))}`}
+          onClose={closeSplash}
+        />
+      )}
       <JackpotOverlay
         card={grail}
         onClose={() => setGrail(null)}

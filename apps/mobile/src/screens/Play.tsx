@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { multiplierOf, totalWeight } from "@scratchers/sdk/pure";
@@ -8,14 +8,15 @@ import { CardBack, Gem, HoloCard } from "../components/HoloCard";
 import { HoloPack } from "../components/HoloPack";
 import { PackRip } from "../components/PackRip";
 import { JackpotOverlay } from "../components/JackpotOverlay";
-import { CoinBurst } from "../components/CoinBurst";
+import { RaritySplash } from "../components/RaritySplash";
+import { Deck, DECK_W } from "../components/Deck";
 import { CountUp } from "../components/CountUp";
 import { revealFx } from "../lib/fx";
 import { font, ui } from "../theme";
 import { Prizes } from "./Prizes";
 
-const CW = 258;
-const STEP = CW + 16;
+const RIP_MS = 1350;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Shown = UiCard & { art: NonNullable<UiCard["art"]> };
 
 const Chevron = () => (
@@ -24,7 +25,7 @@ const Chevron = () => (
   </Svg>
 );
 
-/** Packs: the shop, the sealed pack, then one card at a time. */
+/** Packs: the shop, the sealed pack, then the pulled cards as a deck. */
 export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onBinder: () => void }) {
   const g = useGame();
   const { width } = useWindowDimensions();
@@ -36,16 +37,16 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [grail, setGrail] = useState<Shown | null>(null);
-  const [burst, setBurst] = useState<{ id: number; colors: string[]; count: number } | null>(null);
-  const pager = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [splash, setSplash] = useState<Shown | null>(null);
+  const [ripping, setRipping] = useState(false);
+  const swipe = useRef<(() => void) | null>(null);
 
   const s = seriesById(sid);
   const paused = isPaused(g, s.feed);
   const live = g.cards.filter((c) => c.state !== "settled");
-  const sealed = another || live.length === 0;
-  const cur = live[Math.min(active, live.length - 1)] as UiCard | undefined;
+  const sealed = ripping || another || live.length === 0;
+  const cur = live[active] as UiCard | undefined;
   const atSummary = active >= live.length;
-  const isUp = !!cur && (cur.flipped || cur.state === "claiming");
 
   const run = async (f: () => Promise<unknown>) => {
     setErr(null);
@@ -61,27 +62,38 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
     }
   };
 
-  const flip = (cards: UiCard[]) => {
-    const fresh = cards.filter((c): c is Shown => !!c.art && !c.flipped && c.state === "revealed");
-    if (!fresh.length) return;
-    for (const c of fresh) g.markFlipped(c.id);
-    const best = fresh.reduce((a, b) => (b.art.multiplierBps > a.art.multiplierBps ? b : a));
-    void revealFx(best.art.multiplier);
-    const t = describeCard(best, seriesById(best.seriesId), 0).tier;
-    if (best.art.multiplierBps >= 10_000_000) setGrail(best);
-    else if (t.fx === "burst" || t.fx === "shake") setBurst({ id: best.id, colors: [t.color, t.glow, "#fff"], count: t.fx === "shake" ? 40 : 22 });
-  };
-
-  // design "swipe one by one": the card you land on turns over by itself once its result is in
+  // a card turns up when it reaches the top of the deck; Uncommon and better get their splash first
   useEffect(() => {
-    if (view !== "open" || sealed || !cur?.art || cur.flipped) return;
-    const t = setTimeout(() => flip([cur]), 450);
-    return () => clearTimeout(t);
+    if (view !== "open" || sealed || !cur?.art || cur.flipped || cur.state !== "revealed") return;
+    g.markFlipped(cur.id);
+    void revealFx(cur.art.multiplier);
+    if (cur.art.multiplierBps >= 20_000) setSplash(cur as Shown);
   }, [view, sealed, cur?.id, cur?.state, cur?.flipped]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const go = (i: number) => {
-    setActive(i);
-    pager.current?.scrollTo({ x: i * STEP, animated: true });
+  const closeSplash = useCallback(() => {
+    setSplash((c) => {
+      // the Grail also gets its own screen, with the proof link
+      if (c && c.art.multiplierBps >= 10_000_000) setGrail(c);
+      return null;
+    });
+  }, []);
+
+  const rip = async () => {
+    const start = live.length; // the new pack goes under nothing: it starts after any cards still unclaimed
+    setRipping(true);
+    const [ok] = await Promise.all([run(() => g.buy(sid, count)), sleep(RIP_MS)]);
+    if (ok) {
+      setActive(start);
+      setAnother(false);
+    }
+    setRipping(false);
+  };
+
+  const skipDust = () => {
+    let j = active + 1;
+    while (j < live.length && live[j].art && live[j].art!.multiplierBps < 10_000) j++;
+    for (const c of live.slice(active, j)) if (c.art && !c.flipped) g.markFlipped(c.id);
+    setActive(j);
   };
   const open = (n: 1 | 10) => {
     setCount(n);
@@ -160,45 +172,27 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
   const flipped = views.filter((v, i) => v && (live[i].flipped || live[i].state === "claiming")) as NonNullable<(typeof views)[number]>[];
   const total = flipped.reduce((a, v) => a + v.usd, 0);
   const best = flipped.length ? flipped.reduce((a, b) => (b.usd > a.usd ? b : a)) : null;
-  const v = views[Math.min(active, live.length - 1)];
+  const v = views[active];
   const claimable = live.filter((c) => c.state === "revealed");
 
   return (
     <View style={ui.screen}>
       <View style={[ui.row, { justifyContent: "space-between", paddingHorizontal: 12 }]}>
         <Pressable onPress={() => setView("shop")} accessibilityLabel="Back to packs" style={{ padding: 12 }}><Chevron /></Pressable>
-        <Text style={[ui.mono, { color: colors.textDim }]}>{sealed ? `${s.feed} pack · ${count} card${count > 1 ? "s" : ""}` : atSummary ? "pack done" : `card ${active + 1} / ${live.length} · swipe`}</Text>
+        <Text style={[ui.mono, { color: colors.textDim }]}>{sealed ? `${s.feed} pack · ${count} card${count > 1 ? "s" : ""}` : atSummary ? `${s.feed} pack · done` : `card ${active + 1} / ${live.length} · swipe`}</Text>
       </View>
       {setupCard}
       {err && <Text accessibilityRole="alert" style={{ color: colors.danger, marginHorizontal: 20 }}>{err}</Text>}
       {sealed ? (
-        <ScrollView contentContainerStyle={{ paddingTop: 20, paddingBottom: 30, alignItems: "center" }}>
-          <PackRip feed={s.feed} count={count} demo={s.demo} paused={paused} busy={busy} price={money(s.ticketUsd * count)}
-            onRip={() => run(() => g.buy(sid, count)).then((ok) => { if (ok) { setActive(0); setAnother(false); } })} />
-          {live.length > 0 && <Pressable onPress={() => setAnother(false)} style={{ padding: 16 }}><Text style={ui.dim}>Back to your {live.length} cards</Text></Pressable>}
+        <ScrollView contentContainerStyle={{ paddingTop: 20, paddingBottom: 30, alignItems: "center" }} scrollEnabled={false}>
+          <PackRip feed={s.feed} count={count} demo={s.demo} paused={paused} ripping={ripping} price={money(s.ticketUsd * count)} onRip={rip} />
+          {live.length > 0 && !ripping && <Pressable onPress={() => setAnother(false)} style={{ padding: 16 }}><Text style={ui.dim}>Back to your {live.length} cards</Text></Pressable>}
         </ScrollView>
       ) : (
         <>
-          <View style={{ height: 400 }}>
-            <ScrollView ref={pager} horizontal showsHorizontalScrollIndicator={false} snapToInterval={STEP} decelerationRate="fast" disableIntervalMomentum
-              contentContainerStyle={{ gap: 16, paddingHorizontal: (width - CW) / 2, paddingTop: 14 }}
-              onScroll={(e) => { const i = Math.max(0, Math.min(live.length, Math.round(e.nativeEvent.contentOffset.x / STEP))); if (i !== active) setActive(i); }} scrollEventThrottle={32}>
-              {live.map((c, i) => {
-                const cv = views[i];
-                const up = cv && (c.flipped || c.state === "claiming");
-                return (
-                  <View key={c.id} style={{ width: CW, opacity: i === active ? 1 : 0.5, transform: [{ scale: i === active ? 1 : 0.9 }] }}>
-                    {!cv ? (
-                      <View style={{ opacity: 0.5 }} accessibilityLabel="Randomness pending"><CardBack width={CW} /></View>
-                    ) : up ? (
-                      <View><HoloCard {...cv.face} width={CW} />{burst?.id === c.id && <CoinBurst colors={burst.colors} count={burst.count} />}</View>
-                    ) : (
-                      <Pressable onPress={() => flip([c])} accessibilityLabel={`Flip card ${i + 1}`}><CardBack rarity={cv.tier.key} tease width={CW} /></Pressable>
-                    )}
-                  </View>
-                );
-              })}
-              <View style={{ width: CW, height: 368, borderRadius: 16, backgroundColor: colors.text, padding: 18 }}>
+          <View style={{ height: 420, paddingTop: 14 }}>
+            {atSummary ? (
+              <View style={{ width: DECK_W, height: 368, alignSelf: "center", borderRadius: 16, backgroundColor: colors.text, padding: 18 }}>
                 <Text style={[ui.mono, { color: colors.ink, fontFamily: font.monoBold, fontSize: 11 }]}>{seriesById(live[0].seriesId).feed} PACK · {live.length} CARD{live.length > 1 ? "S" : ""}</Text>
                 {best && best.usd > seriesById(live[0].seriesId).ticketUsd
                   ? <CountUp to={total} style={{ fontFamily: font.heavy, fontSize: 44, color: colors.ink, marginTop: 6 }} />
@@ -216,36 +210,45 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
                 })}
                 {best && <Text style={{ fontFamily: font.bold, color: colors.ink, marginTop: "auto" }}>Best pull: {best.tier.label} {best.face.mult}</Text>}
               </View>
-            </ScrollView>
+            ) : (
+              <Deck id={cur!.id} under={live.length - active - 1} controls={swipe} locked={!v} onNext={() => setActive((i) => i + 1)}>
+                {v ? <HoloCard {...v.face} width={DECK_W} /> : <View accessibilityLabel="Randomness pending" style={{ opacity: 0.6 }}><CardBack width={DECK_W} /></View>}
+              </Deck>
+            )}
           </View>
           <View style={{ alignItems: "center", paddingHorizontal: 24, minHeight: 62 }}>
-            <Text style={{ fontFamily: font.heavy, fontSize: 24, color: atSummary || !isUp || !v ? colors.text : v.tier.color }}>
-              {atSummary ? "Pack done" : !v ? "Drawing…" : !isUp ? `Card ${active + 1} of ${live.length}` : v.caption.title}
+            <Text style={{ fontFamily: font.heavy, fontSize: 24, color: atSummary || !v ? colors.text : v.tier.color }}>
+              {atSummary ? "Pack done" : !v ? "Drawing…" : v.caption.title}
             </Text>
             <Text style={[ui.mono, { color: "#C9C2E6", textAlign: "center" }]}>
-              {atSummary ? "claim to move the stock into your wallet" : !v ? "randomness pending" : !isUp ? (v.tier.key === "dust" ? "tap to flip" : "it glows: tap to flip") : cur?.state === "claiming" ? "settling on Solana…" : v.caption.sub}
+              {atSummary ? "claim to move the stock into your wallet" : !v ? "randomness pending" : cur!.state === "claiming" ? "settling on Solana…" : v.tier.key === "dust" ? `${v.caption.sub} · swipe` : v.caption.sub}
             </Text>
           </View>
-          <View accessibilityLabel={`${flipped.length} of ${live.length} cards flipped`} style={[ui.row, { justifyContent: "center", gap: 6, paddingTop: 12, flexWrap: "wrap" }]}>
-            {live.slice(0, 16).map((c, i) => <View key={c.id} style={{ width: i === active ? 20 : 8, height: 8, borderRadius: 4, backgroundColor: views[i] && c.flipped ? views[i]!.tier.color : i === active ? colors.text : "#3A3350" }} />)}
+          <View accessibilityLabel={`${Math.min(active + 1, live.length)} of ${live.length} cards seen`} style={[ui.row, { justifyContent: "center", gap: 6, paddingTop: 12, flexWrap: "wrap" }]}>
+            {live.slice(0, 16).map((c, i) => <View key={c.id} style={{ width: i === active ? 20 : 8, height: 8, borderRadius: 4, backgroundColor: i <= active && views[i] ? views[i]!.tier.color : "#3A3350" }} />)}
           </View>
           <View style={[ui.row, { gap: 10, paddingHorizontal: 20, paddingBottom: 18, marginTop: "auto" }]}>
             {atSummary ? (
               <>
-                <Pressable onPress={() => { setAnother(true); }} style={[ui.btn, ui.ghost, { flex: 1 }]}><Text style={ui.ghostText}>Rip another</Text></Pressable>
+                <Pressable onPress={() => setAnother(true)} style={[ui.btn, ui.ghost, { flex: 1, paddingHorizontal: 6 }]}><Text numberOfLines={1} adjustsFontSizeToFit style={ui.ghostText}>Rip another</Text></Pressable>
                 <Pressable disabled={busy || !claimable.length} onPress={() => run(g.claimAll).then((ok) => ok && onBinder())} style={[ui.btn, ui.primary, { flex: 1.4, opacity: busy || !claimable.length ? 0.4 : 1 }]}><Text style={ui.btnText}>{busy ? "Working…" : "Add all to binder"}</Text></Pressable>
               </>
             ) : (
               <>
-                <Pressable disabled={!v} onPress={() => (isUp ? go(active + 1) : cur && flip([cur]))} style={[ui.btn, { flex: 1, backgroundColor: colors.text, opacity: v ? 1 : 0.4 }]}>
-                  <Text style={ui.btnText}>{!isUp ? "Flip" : active === live.length - 1 ? "See the pack total" : "Next card"}</Text>
+                <Pressable disabled={!v} onPress={() => swipe.current?.()} style={[ui.btn, { flex: 1, backgroundColor: colors.text, opacity: v ? 1 : 0.4 }]}>
+                  <Text style={ui.btnText}>{active === live.length - 1 ? "See the pack total" : "Next card"}</Text>
                 </Pressable>
-                <Pressable onPress={() => { flip(live); go(live.length); }} style={[ui.btn, ui.ghost]}><Text style={ui.ghostText}>Skip</Text></Pressable>
+                <Pressable onPress={skipDust} style={[ui.btn, ui.ghost]}><Text style={ui.ghostText}>Skip Dust</Text></Pressable>
               </>
             )}
           </View>
         </>
       )}
+      {splash && (() => {
+        const ss = seriesById(splash.seriesId);
+        const d = describeCard(splash, ss, 0);
+        return <RaritySplash rarity={d.tier.key} feed={ss.feed} mult={d.face.mult} usd={d.face.usd} odds={`${ss.demo ? "DEMO ODDS · " : ""}${oddsText(ss.tiers[splash.art.tier].weight, totalWeight(ss.tiers))}`} onClose={closeSplash} />;
+      })()}
       <JackpotOverlay card={grail} onClose={() => setGrail(null)} onProof={(id) => { setGrail(null); onProof(id); }} onClaim={() => { setGrail(null); void run(g.claimAll); }} />
     </View>
   );

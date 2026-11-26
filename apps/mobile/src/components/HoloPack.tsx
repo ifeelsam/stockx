@@ -9,16 +9,24 @@ const H = 330;
 const crimp = (y: number) => Array.from({ length: 55 }, (_, i) => `M ${i * 4 + 1} ${y} v 26`).join(" ");
 const CRIMPS = `${crimp(0)} ${crimp(H - 26)}`;
 
-export function HoloPack({ feed, count = 10, demo = false, paused = false, offset = 0, width = W }: { feed: Feed; count?: number; demo?: boolean; paused?: boolean; offset?: number; width?: number }) {
+/** Where the pack tears, in 220×330 pack units. */
+export const SEAM_Y = 43;
+const jag = Array.from({ length: 33 }, (_, i) => `L ${Math.min(i * 7, W)} ${SEAM_Y + (((i * 7) % 3) - 1) * 2.4}`).join(" ").slice(2);
+const HALVES = { strip: `M 0 -4 L 0 ${SEAM_Y} L ${jag} L ${W} -4 Z`, body: `M ${jag} L ${W} ${H + 4} L 0 ${H + 4} Z` };
+
+export function HoloPack({ feed, count = 10, demo = false, paused = false, offset = 0, width = W, part }: { feed: Feed; count?: number; demo?: boolean; paused?: boolean; offset?: number; width?: number; part?: keyof typeof HALVES }) {
   const k = width / W;
   const p = STOCK_LOOK[feed];
   const shape = Skia.Path.MakeFromSVGString(PACK_PATH)!;
+  // one side of the jagged tear line
+  const half = part ? Skia.Path.MakeFromSVGString(HALVES[part])! : undefined;
   const text = (size: number, family: string, color: string) => ({ fontFamily: family, fontSize: size * k, color, includeFontPadding: false });
   const center = { position: "absolute" as const, left: 0, right: 0, alignItems: "center" as const };
   return (
     <View style={{ width, height: H * k }} accessibilityLabel={`${p.company} pack, ${count} cards`}>
       <Canvas style={{ position: "absolute", width, height: H * k }}>
         <Group transform={[{ scale: k }]}>
+         <Group clip={half}>
           <Group clip={shape}>
             <Rect x={0} y={0} width={W} height={H} color={p.pack} />
             <Rect x={0} y={0} width={W} height={H} opacity={0.95} blendMode="softLight">
@@ -41,6 +49,7 @@ export function HoloPack({ feed, count = 10, demo = false, paused = false, offse
               <LinearGradient start={vec(68, 83)} end={vec(152, 167)} colors={["rgba(0,0,0,0.22)", "rgba(255,255,255,0.10)", "rgba(255,255,255,0.40)"]} />
             </Circle>
           </Group>
+         </Group>
         </Group>
       </Canvas>
       <View style={{ position: "absolute", left: 14 * k, right: 12 * k, top: 8 * k, flexDirection: "row", justifyContent: "space-between" }}>
