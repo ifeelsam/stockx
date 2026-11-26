@@ -3,15 +3,15 @@
  * Chain backend for `useGame()`: same shape as the mock, driven by the SDK against devnet.
  * Wallet (Privy / Seeker) signs Solana-layer + one-time rollup txs; the session key signs everything else.
  *
- * NOT YET RUN AGAINST DEVNET (deployer unfunded): the flow mirrors scripts/src/e2e.ts, which is the
- * thing to run first. Treat this file as unverified until then.
+ * The on-chain rules it relies on are checked live by scripts/src/conformance.ts; this React flow itself
+ * has not been run end to end with a real login.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
-  buyCardIx, CardState, claimAllIx, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
-  ACTION_ESCROW_LAMPORTS, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
+  buyCardIx, CardState, claimAllIx, waitForRollupUsdc, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
+  ACTION_ESCROW_LAMPORTS, PLAYER_RESERVE_LOW_LAMPORTS, topUpPlayerReserveIx, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
   type Signer, type SessionKeySigner,
 } from "@scratchers/sdk";
 import { cardArt } from "@scratchers/sdk/pure";
@@ -148,12 +148,13 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   );
 
   // ---- onboarding -------------------------------------------------------------------------------------
-  const check = useCallback(async () => {
+  /** `minCapE6`: spend allowance the session must still have (default: one full pack). */
+  const check = useCallback(async (minCapE6 = 10_000_000) => {
     const acc = await c.base.getAccountInfo(playerPda(user), "confirmed");
     if (!acc) return { status: "needed" as const, step: "signup" };
     if (!acc.owner.equals(DLP)) return { status: "needed" as const, step: "delegate" };
     const p = await fetchPlayer(rollup, user).catch(() => null);
-    const ok = p && p.sessionKey.equals(sessionKey.publicKey) && p.sessionExpiry.toNumber() > Date.now() / 1000 + 120;
+    const ok = p && p.sessionKey.equals(sessionKey.publicKey) && p.sessionExpiry.toNumber() > Date.now() / 1000 + 120 && p.sessionSpendRemainingE6.toNumber() >= minCapE6;
     return ok ? { status: "ready" as const, step: "" } : { status: "needed" as const, step: "session" };
   }, [c, rollup, user, sessionKey]);
   useEffect(() => {
@@ -162,14 +163,14 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
 
   const baseUsdc = useCallback(async () => BigInt((await c.base.getTokenAccountBalance(getAssociatedTokenAddressSync(usdcMint, user), "confirmed").catch(() => null))?.value.amount ?? "0"), [c, usdcMint, user]);
 
-  /** Move all base USDC onto the rollup and credit the in-app balance (wallet signs a base tx, then a rollup tx). */
+  /** Move all base USDC onto the rollup and credit the in-app balance (wallet signs a base tx, then a rollup tx).
+   *  Also credits USDC an interrupted earlier deposit left in the rollup token account. */
   const deposit = useCallback(async () => {
     const amount = await baseUsdc();
-    if (amount === 0n) return;
-    await signAndSend(c.base, signer, new Transaction().add(...(await depositToRollupIxs(user, usdcMint, amount, validator, user))));
-    const ata = getAssociatedTokenAddressSync(usdcMint, user);
-    for (let i = 0; i < 30 && !(await c.rollup.getAccountInfo(ata)); i++) await sleep(1000);
-    await signAndSend(c.rollup, signer, new Transaction().add(await depositUsdcIx(rollup, user, usdcMint, amount)), { skipPreflight: true });
+    if (amount > 0n) await signAndSend(c.base, signer, new Transaction().add(...(await depositToRollupIxs(c.base, user, usdcMint, amount, validator, user))));
+    const onRollup = await waitForRollupUsdc(c.rollup, user, usdcMint, amount);
+    if (onRollup === 0n) return;
+    await signAndSend(c.rollup, signer, new Transaction().add(await depositUsdcIx(rollup, user, usdcMint, onRollup)), { skipPreflight: true });
   }, [baseUsdc, c, signer, user, usdcMint, validator, rollup]);
 
   /** A fresh wallet has no SOL for rent/fees: ask the keeper faucet (SOL + mUSDC) before the first transaction. */
@@ -217,6 +218,15 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   }, [ensureFunds, check, base, rollup, c, signer, user, validator, dep, sessionKey, deposit]);
 
   // ---- game actions -------------------------------------------------------------------------------------
+  /** An expired or used-up session sends the player back to the set-up card for one new approval. */
+  const requireSession = useCallback(async (minCapE6: number) => {
+    const r = await check(minCapE6);
+    if (r.status === "ready") return;
+    setSetup(r.status);
+    setStep(r.step);
+    throw new Error("Your play session ended or its spend limit is used up. Set up again to continue.");
+  }, [check]);
+
   const buy = useCallback(
     async (seriesId: number, n: number) => {
       const s = seriesById(seriesId);
@@ -225,6 +235,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       const price = prices[s.feed];
       if (!price) throw new Error("price unavailable");
       if (paused[s.feed]) throw new Error("Price paused: no fresh price for this series");
+      await requireSession(n * s.ticketUsd * 1e6);
       const tx = new Transaction().add(
         await buyCardIx(rollup, {
           signer: sessionKey.publicKey,
@@ -240,10 +251,23 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       await signAndSend(c.rollup, sessionKey, tx);
       return [];
     },
-    [dep, prices, paused, rollup, sessionKey, user, c],
+    [dep, prices, paused, rollup, sessionKey, user, c, requireSession],
   );
 
+  /** Long sessions spend the Player's commit-fee reserve: refill it (one wallet-signed base tx) before it blocks claims. */
+  const ensureCommitReserve = useCallback(async () => {
+    const info = await c.rollup.getAccountInfo(playerPda(user), "confirmed");
+    if (!info) return;
+    const spare = async () => (await c.rollup.getBalance(playerPda(user), "confirmed")) - (await c.base.getMinimumBalanceForRentExemption(info.data.length));
+    const before = await spare();
+    if (before >= PLAYER_RESERVE_LOW_LAMPORTS) return;
+    await signAndSend(c.base, signer, new Transaction().add(topUpPlayerReserveIx(user, user)));
+    for (let i = 0; i < 30 && (await spare()) <= before; i++) await sleep(1000);
+  }, [c, signer, user]);
+
   const claimAll = useCallback(async () => {
+    await requireSession(0);
+    await ensureCommitReserve();
     const bySeries = new Map<number, UiCard[]>();
     for (const k of cards.filter((x) => x.state === "revealed")) bySeries.set(k.seriesId, [...(bySeries.get(k.seriesId) ?? []), k]);
     for (const [seriesId, list] of bySeries) {
@@ -257,7 +281,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
         }
       }
     }
-  }, [cards, dep, rollup, sessionKey, user, validator, c]);
+  }, [cards, dep, rollup, sessionKey, user, validator, c, ensureCommitReserve, requireSession]);
 
   const faucet = useCallback(async () => {
     if (setup !== "ready") throw new Error("Set up your account first (the Set up card above).");

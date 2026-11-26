@@ -10,7 +10,7 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  buyCardIx, CardState, fetchStats, fetchSellQuote, sell, signerFrom, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs,
+  buyCardIx, CardState, fetchStats, fetchSellQuote, sell, signerFrom, claimAllIx, connect, createSessionIx, createStockAtaIx, createTreasuryIx, delegatePlayerIx, depositToRollupIxs, waitForRollupUsdc,
   depositUsdcIx, fetchPlayer, getProgram, maxPriceE8, playerPda, seriesPda, signupIx, tierFor, topUpActionEscrowIx, treasuryUsdc, ACTION_ESCROW_LAMPORTS,
 } from "@scratchers/sdk";
 import { exists, KEY_DIR, loadOrCreateKey, send, sleep } from "./lib.js";
@@ -59,8 +59,8 @@ async function main() {
   await send(c.base, [await delegatePlayerIx(base, user.publicKey, c.validator), topUpActionEscrowIx(user.publicKey, playerPda(user.publicKey), ACTION_ESCROW_LAMPORTS)], [user], "delegate player + escrow top-up");
 
   // 3. USDC → rollup (eSPL), treasury (one-time), in-app balance
-  await send(c.base, await depositToRollupIxs(user.publicKey, usdc, 50_000_000n, c.validator, user.publicKey), [user], "delegateSpl 50 mUSDC");
-  for (let i = 0; i < 30 && !(await exists(c.rollup, userUsdc)); i++) await sleep(1000); // wait for the clone
+  await send(c.base, await depositToRollupIxs(c.base, user.publicKey, usdc, 50_000_000n, c.validator, user.publicKey), [user], "delegateSpl 50 mUSDC");
+  await waitForRollupUsdc(c.rollup, user.publicKey, usdc, 50_000_000n);
   if (!(await exists(c.rollup, treasuryUsdc(usdc)))) await send(c.rollup, [createTreasuryIx(admin.publicKey, usdc)], [admin], "create treasury (Magic ATA)");
   await send(c.rollup, [await depositUsdcIx(rollup, user.publicKey, usdc, 50_000_000n)], [user], "deposit_usdc 50");
 

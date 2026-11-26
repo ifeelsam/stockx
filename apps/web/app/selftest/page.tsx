@@ -19,7 +19,7 @@ export default function SelfTest() {
         await depositUsdcIx(p, u, m, 50_000_000n),
         await buyCardIx(p, { signer: s, authority: u, seriesId: 3, stockMint: m, feed: f, n: 10, maxPrice: 7_000_000_000n, callerSeed: new Uint8Array(32) }),
         await claimAllIx(p, s, u, 3, m, v),
-        ...(await depositToRollupIxs(u, m, 50_000_000n, v, u)),
+        ...(await depositToRollupIxs(c.base, u, m, 50_000_000n, v, u)),
       ];
       const tx = new Transaction().add(...ixs.slice(0, 2));
       tx.feePayer = u; tx.recentBlockhash = "11111111111111111111111111111111";

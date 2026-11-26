@@ -1,6 +1,6 @@
 import BN from "bn.js";
-import { createMagicAtaInstruction, createTopUpEscrowInstruction, delegateSpl, withdrawSpl } from "@magicblock-labs/ephemeral-rollups-sdk";
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { createMagicAtaInstruction, createTopUpEscrowInstruction, DELEGATION_PROGRAM_ID, delegateSpl, deriveEphemeralAta, lamportsDelegatedTransferIx, withdrawSpl } from "@magicblock-labs/ephemeral-rollups-sdk";
+import { PublicKey, TransactionInstruction, type Connection } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID, VRF_EPHEMERAL_QUEUE } from "./constants.js";
 import { configPda, delegationRecordPda, escrowPda, feedPda, magicFeeVaultPda, payoutPda, playerPda, seriesPda, statsPda, treasuryAuthPda, vaultPda } from "./pda.js";
@@ -163,6 +163,16 @@ export const ACTION_ESCROW_LAMPORTS = 50_000_000n;
 export const topUpActionEscrowIx = (payer: PublicKey, player: PublicKey, lamports: bigint) =>
   createTopUpEscrowInstruction(escrowPda(player), player, payer, lamports, 255);
 
+/** Each commit from the 26th per delegation costs this much, from the Player's lamports above rent. */
+export const COMMIT_FEE_LAMPORTS = 1_000_000;
+/** Top the reserve up when fewer than `LOW` lamports remain; `signup` funds the first 0.01 SOL. */
+export const PLAYER_RESERVE_LOW_LAMPORTS = 3 * COMMIT_FEE_LAMPORTS;
+export const PLAYER_RESERVE_TOP_UP_LAMPORTS = 10_000_000n;
+
+/** Base layer: add lamports to the delegated Player on the rollup. */
+export const topUpPlayerReserveIx = (payer: PublicKey, authority: PublicKey, lamports: bigint = PLAYER_RESERVE_TOP_UP_LAMPORTS) =>
+  lamportsDelegatedTransferIx(payer, playerPda(authority), lamports, crypto.getRandomValues(new Uint8Array(32)));
+
 /** Rollup: claims up to 8 revealed cards of one series; commit + Magic Action pays shares on Solana. */
 export const claimAllIx = (p: ScratchersProgram, signer: PublicKey, authority: PublicKey, seriesId: number, stockMint: PublicKey, validator: PublicKey) =>
   p.methods
@@ -224,16 +234,37 @@ export const withdrawUsdcIx = (p: ScratchersProgram, authority: PublicKey, usdcM
 // ---- USDC onboarding (eSPL) ------------------------------------------------------------------
 
 /**
- * Base layer, owner signs (payer optional): deposit + delegate `amountE6` mock USDC so it appears at the
- * owner's canonical ATA on the rollup. Pin the same `validator` the Player is delegated to.
- * Legacy deposit builder (`idempotent: false`) as in the eSPL reference.
+ * Base layer, owner signs (payer optional): move `amountE6` mock USDC to the owner's canonical ATA on the rollup.
+ * Pin the same `validator` the Player is delegated to. Two builders, because neither covers both cases (live devnet):
+ * the first deposit must use the legacy one (a shuttle merge can run before the rollup ATA exists and strand the
+ * amount), and top-ups must use the shuttle (the legacy one rejects an already-delegated balance).
  */
-export const depositToRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) =>
-  delegateSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: false, initVaultIfMissing: true });
+export async function depositToRollupIxs(base: Connection, owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) {
+  const eata = await base.getAccountInfo(deriveEphemeralAta(owner, usdcMint)[0], "confirmed");
+  const delegated = eata?.owner.equals(DELEGATION_PROGRAM_ID) ?? false;
+  return delegateSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: delegated, initVaultIfMissing: true });
+}
 
-/** Base layer: bring USDC back from the rollup to the owner's base ATA (after `withdraw_usdc` on the rollup). */
+/**
+ * A shuttle deposit creates the rollup token account first and merges the amount in a moment later:
+ * wait for the amount, not the account. Returns the rollup balance to pass to `depositUsdcIx`.
+ */
+export async function waitForRollupUsdc(rollup: Connection, owner: PublicKey, usdcMint: PublicKey, atLeastE6: bigint, timeoutMs = 60_000): Promise<bigint> {
+  const ata = getAssociatedTokenAddressSync(usdcMint, owner);
+  for (const end = Date.now() + timeoutMs; ; await new Promise((r) => setTimeout(r, 1000))) {
+    const info = await rollup.getAccountInfo(ata, "confirmed");
+    const have = info && info.data.length >= 72 ? new DataView(info.data.buffer, info.data.byteOffset).getBigUint64(64, true) : 0n; // SPL amount
+    if (have >= atLeastE6) return have;
+    if (Date.now() > end) throw new Error("the deposit has not reached the rollup yet: try again in a moment");
+  }
+}
+
+/**
+ * Base layer: bring USDC back from the rollup to the owner's base ATA (after `withdraw_usdc` on the rollup).
+ * Default shuttle withdrawal: the legacy builder only works once the eATA has been undelegated.
+ */
 export const withdrawFromRollupIxs = (owner: PublicKey, usdcMint: PublicKey, amountE6: bigint, validator: PublicKey, payer?: PublicKey) =>
-  withdrawSpl(owner, usdcMint, amountE6, { validator, payer, idempotent: false });
+  withdrawSpl(owner, usdcMint, amountE6, { validator, payer });
 
 /** Rollup tx (one-time, admin/keeper): create the treasury as a Magic ATA so `deposit_usdc` has a destination. */
 export const createTreasuryIx = (payer: PublicKey, usdcMint: PublicKey) => createMagicAtaInstruction(payer, treasuryAuthPda(), usdcMint);
