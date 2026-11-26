@@ -5,7 +5,7 @@ import { FINISH, STOCK_LOOK, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
 import { isPaused, useGame, VISIBLE_SERIES } from "@scratchers/app-core";
 import { multiplierOf, rtp, totalWeight, DEFAULT_TIERS } from "@scratchers/sdk";
 import { HoloCard } from "@/components/HoloCard";
-import { HoloPack } from "@/components/HoloPack";
+import { PackShelf } from "@/components/PackShelf";
 import { cardUsd, money, oddsText } from "@/lib/cards";
 
 /** Packs: choose a pack, see what is inside. */
@@ -37,43 +37,14 @@ export default function Packs() {
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-[1_1_480px] flex-col items-center gap-5 overflow-x-clip">
-          {/* fixed-width row, scaled down on phones so both packs stay on screen */}
-          <div className="flex h-[250px] w-[600px] shrink-0 origin-bottom scale-[0.62] items-end justify-center sm:h-[390px] sm:scale-100">
-            {/* previous, picked, next: the rest wait off stage */}
-            {[-1, 0, 1].map((rel) => {
-              const i = (picked + rel + VISIBLE_SERIES.length) % VISIBLE_SERIES.length;
-              const s = VISIBLE_SERIES[i];
-              const on = rel === 0;
-              return (
-                <button
-                  key={s.id}
-                  aria-pressed={on}
-                  aria-label={`Choose the ${s.name}`}
-                  onClick={() => setPicked(i)}
-                  className="-mx-[26px] origin-bottom transition-[transform,opacity] duration-300"
-                  style={{ transform: `translateY(${on ? 0 : 18}px) rotate(${rel * -6}deg) scale(${on ? 1.12 : 0.86})`, opacity: on ? 1 : 0.6, zIndex: on ? 2 : 1, margin: on ? "0 6px" : undefined }}
-                >
-                  <div className={on ? "bob" : ""}>
-                    <HoloPack feed={s.feed} demo={s.demo} paused={isPaused(g, s.feed)} offset={rel * 0.6} />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div role="group" aria-label="Choose a pack" className="flex gap-2">
-            {VISIBLE_SERIES.map((s, i) => (
-              <button key={s.id} aria-pressed={i === picked} onClick={() => setPicked(i)} className="chip">
-                {s.demo ? "DEMO ODDS" : s.feed}
-              </button>
-            ))}
-          </div>
+        <div className="flex min-w-0 flex-[1_1_480px] flex-col items-center">
+          <PackShelf picked={picked} onPick={setPicked} />
         </div>
       </section>
 
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-3xl font-extrabold tracking-tight">What's inside a {cur.feed} pack</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight">What's inside the {cur.feed} pack</h2>
           <span className="num text-xs text-dim">{cur.demo ? "DEMO ODDS · not the real table" : `most cards are Dust (20¢ back) · ${(rtp(DEFAULT_TIERS) * 100).toFixed(3)}% returned on average`}</span>
         </div>
         <ul className="flex gap-4 overflow-x-auto pb-2 pt-5">

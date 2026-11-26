@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
-import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { multiplierOf, totalWeight } from "@scratchers/sdk/pure";
 import { isPaused, seriesById, useGame, VISIBLE_SERIES, type UiCard } from "@scratchers/app-core";
 import { cardUsd, colors, describeCard, money, oddsText, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
 import { CardBack, Gem, HoloCard } from "../components/HoloCard";
-import { HoloPack } from "../components/HoloPack";
+import { PackShelf } from "../components/PackShelf";
 import { PackRip } from "../components/PackRip";
 import { JackpotOverlay } from "../components/JackpotOverlay";
 import { RaritySplash } from "../components/RaritySplash";
@@ -28,7 +28,6 @@ const Chevron = () => (
 /** Packs: the shop, the sealed pack, then the pulled cards as a deck. */
 export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onBinder: () => void }) {
   const g = useGame();
-  const { width } = useWindowDimensions();
   const [view, setView] = useState<"shop" | "open" | "odds">("shop");
   const [sid, setSid] = useState(11);
   const [count, setCount] = useState<1 | 10>(10);
@@ -40,7 +39,6 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
   const [splash, setSplash] = useState<Shown | null>(null);
   const [ripping, setRipping] = useState(false);
   const swipe = useRef<(() => void) | null>(null);
-  const shelf = useRef<ComponentRef<typeof ScrollView>>(null);
 
   const s = seriesById(sid);
   const paused = isPaused(g, s.feed);
@@ -125,17 +123,7 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
           {setupCard}
           {err && <Text style={{ color: colors.danger, marginHorizontal: 20 }}>{err}</Text>}
           <Text style={[ui.h1, { fontSize: 40, lineHeight: 42, marginHorizontal: 20, marginTop: 16 }]}>Rip a pack.{"\n"}Pull real stock.</Text>
-          <ScrollView ref={shelf} contentOffset={{ x: VISIBLE_SERIES.findIndex((x) => x.id === sid) * 236, y: 0 }} horizontal showsHorizontalScrollIndicator={false} snapToInterval={236} decelerationRate="fast" contentContainerStyle={{ gap: 16, paddingHorizontal: (width - 220) / 2, paddingVertical: 26 }}
-            onMomentumScrollEnd={(e) => setSid(VISIBLE_SERIES[Math.max(0, Math.min(VISIBLE_SERIES.length - 1, Math.round(e.nativeEvent.contentOffset.x / 236)))].id)}>
-            {VISIBLE_SERIES.map((x, i) => (
-              <Pressable key={x.id} onPress={() => { setSid(x.id); shelf.current?.scrollTo({ x: i * 236, animated: true }); }} accessibilityLabel={`Choose the ${x.name}`} style={{ opacity: x.id === sid ? 1 : 0.6, transform: [{ scale: x.id === sid ? 1 : 0.88 }] }}>
-                <HoloPack feed={x.feed} demo={x.demo} paused={isPaused(g, x.feed)} />
-              </Pressable>
-            ))}
-          </ScrollView>
-          <View style={[ui.row, { justifyContent: "center", gap: 6 }]}>
-            {VISIBLE_SERIES.map((x) => <View key={x.id} style={{ width: x.id === sid ? 22 : 6, height: 6, borderRadius: 3, backgroundColor: x.id === sid ? colors.accent : "#3A3350" }} />)}
-          </View>
+          <PackShelf sid={sid} onPick={setSid} />
           {live.length > 0 && (
             <Pressable onPress={() => { setAnother(false); setView("open"); }} style={[ui.btn, ui.ghost, { marginHorizontal: 20, marginTop: 18 }]}><Text style={ui.ghostText}>You have {live.length} card{live.length > 1 ? "s" : ""} waiting →</Text></Pressable>
           )}
