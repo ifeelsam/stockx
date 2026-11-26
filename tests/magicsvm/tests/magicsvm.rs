@@ -343,6 +343,29 @@ fn late_callback_after_cancel_is_rejected_and_refunds() {
 }
 
 #[test]
+fn a_second_callback_for_a_revealed_card_changes_nothing() {
+    let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
+    let user = e.user.insecure_clone();
+    let buy = buy_ix(&e, &user, 1, u64::MAX);
+    send(&mut e.svm, Ephemeral, &[&user], buy, "buy_card");
+    // Stand in for "the first callback already landed": the card is Revealed when this request is fulfilled.
+    let player = e.player;
+    edit_er_player(&mut e.svm, &player, |p| {
+        p.cards[0].state = CardState::Revealed as u8;
+        p.cards[0].tier = 3;
+    });
+    let before: VaultState = read(&e.svm, Ephemeral, &e.vault);
+
+    let results = fulfill(&mut e.svm);
+    let err = results[0].as_ref().unwrap_err();
+    assert!(err.contains(&custom(ScratchError::AlreadyRevealed)), "{err}");
+    let card = read_player(&e.svm, Ephemeral, &e.player).cards[0];
+    assert_eq!((card.state, card.tier), (CardState::Revealed as u8, 3));
+    let after: VaultState = read(&e.svm, Ephemeral, &e.vault);
+    assert_eq!(after.reserved_shares, before.reserved_shares, "no second release");
+}
+
+#[test]
 fn undelegate_is_blocked_while_randomness_pending_then_commits() {
     let mut e = setup(5_000_000, 10_000_000_000, default_tiers());
     let user = e.user.insecure_clone();

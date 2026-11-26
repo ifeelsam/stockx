@@ -8,7 +8,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo no tests",
-    "e2e:devnet": "tsx src/e2e.ts"
+    "e2e:devnet": "tsx src/e2e.ts",
+    "conformance:devnet": "tsx src/conformance.ts"
   },
   "dependencies": {
     "@scratchers/sdk": "workspace:*",
