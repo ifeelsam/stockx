@@ -11,7 +11,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
   buyCardIx, CardState, claimAllIx, fetchCardHistory, waitForRollupUsdc, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
-  ACTION_ESCROW_LAMPORTS, PLAYER_RESERVE_LOW_LAMPORTS, topUpPlayerReserveIx, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
+  ACTION_ESCROW_LAMPORTS, actionEscrowShortfall, escrowPda, PLAYER_RESERVE_LOW_LAMPORTS, topUpPlayerReserveIx, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
   type PastCard, type Signer, type SessionKeySigner,
 } from "@scratchers/sdk";
 import { cardArt } from "@scratchers/sdk/pure";
@@ -282,9 +282,18 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     for (let i = 0; i < 30 && (await spare()) <= before; i++) await sleep(1000);
   }, [c, signer, user]);
 
+  /** Payout receipts are paid from the action escrow; running it low stops this player's payouts for good. */
+  const ensureActionEscrow = useCallback(async () => {
+    const need = actionEscrowShortfall(await c.base.getBalance(escrowPda(playerPda(user)), "confirmed"));
+    if (need === 0n) return;
+    if (BigInt(await c.base.getBalance(user, "confirmed")) < need + 5_000_000n) await ensureFunds();
+    await signAndSend(c.base, signer, new Transaction().add(topUpActionEscrowIx(user, playerPda(user), need)));
+  }, [c, signer, user, ensureFunds]);
+
   const claimAll = useCallback(async () => {
     await requireSession(0);
     await ensureCommitReserve();
+    await ensureActionEscrow();
     const bySeries = new Map<number, UiCard[]>();
     for (const k of cards.filter((x) => x.state === "revealed")) bySeries.set(k.seriesId, [...(bySeries.get(k.seriesId) ?? []), k]);
     for (const [seriesId, list] of bySeries) {
@@ -294,7 +303,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
         await signAndSend(c.rollup, sessionKey, tx);
       }
     }
-  }, [cards, dep, rollup, sessionKey, user, validator, c, ensureCommitReserve, requireSession]);
+  }, [cards, dep, rollup, sessionKey, user, validator, c, ensureCommitReserve, ensureActionEscrow, requireSession]);
 
   const faucet = useCallback(async () => {
     if (setup !== "ready") throw new Error("Set up your account first (the Set up card above).");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { statsPda, sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, programEvents, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { statsPda, sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, actionEscrowShortfall, ACTION_ESCROW_LAMPORTS, ACTION_ESCROW_LOW_LAMPORTS, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, programEvents, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -240,4 +240,10 @@ test("patchBuffer keeps subarray() a Buffer where the engine drops the subclass 
   const view = Hermes.alloc(4).subarray(1, 3);
   assert.ok(view instanceof Hermes);
   assert.equal(view.length, 2);
+});
+
+test("the action escrow is refilled long before a claim could leave it below rent", () => {
+  assert.ok(ACTION_ESCROW_LOW_LAMPORTS > 32n * 772_160n + 890_880n, "covers every slot of a Player");
+  assert.equal(actionEscrowShortfall(2_004_160), ACTION_ESCROW_LAMPORTS - 2_004_160n); // the balance that wedged a devnet player
+  assert.equal(actionEscrowShortfall(Number(ACTION_ESCROW_LOW_LAMPORTS)), 0n);
 });

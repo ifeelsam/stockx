@@ -156,8 +156,17 @@ export const syncInventoryIx = (p: ScratchersProgram, authority: PublicKey, stoc
 export const createStockAtaIx = (payer: PublicKey, owner: PublicKey, stockMint: PublicKey) =>
   createAssociatedTokenAccountIdempotentInstruction(payer, getAssociatedTokenAddressSync(stockMint, owner), owner, stockMint);
 
-/** Every card (Dust included) rents a ~0.0008 SOL Payout receipt, so this covers about 60 cards; after that the keeper repairs payouts. */
+/**
+ * Every card (Dust included) rents a ~0.0008 SOL Payout receipt from the player's action escrow. If a claim can pay its
+ * receipts but would leave the escrow below rent, the whole commit transaction fails, and no later commit of that
+ * Player lands (seen on devnet; a top-up afterwards does not recover it). So refill below `LOW`, which covers a full
+ * Player (32 receipts) with room to spare.
+ */
 export const ACTION_ESCROW_LAMPORTS = 50_000_000n;
+export const ACTION_ESCROW_LOW_LAMPORTS = 30_000_000n;
+/** Lamports to add before claiming; 0 while the escrow is safe. */
+export const actionEscrowShortfall = (balance: number): bigint =>
+  BigInt(balance) < ACTION_ESCROW_LOW_LAMPORTS ? ACTION_ESCROW_LAMPORTS - BigInt(balance) : 0n;
 
 /** Base layer: fund the escrow that pays the Payout receipt rent for post-commit actions. */
 export const topUpActionEscrowIx = (payer: PublicKey, player: PublicKey, lamports: bigint) =>

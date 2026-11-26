@@ -101,3 +101,8 @@
 ## 2026-11-26: Keeper stays; native cranks cannot replace it. Faucet capped before going public
 - A MagicBlock crank repeats instructions whose accounts and data are fixed when scheduled (`ScheduleTaskArgs { task_id, execution_interval_millis, iterations, instructions }`, SDK 0.18.0 crates), so it cannot fetch a price. Re-sending one `push_price` is rejected after the first (timestamp must increase). The faucet is a web endpoint and the sell quote and payout repair are base-layer transactions signed with our keys. On validator 2.0 (our rollup runs 2.0.5) scheduled instructions also cannot carry signers, and they fire only while a Hydra cranker runs.
 - Public faucet: at most 6 SOL drips per hour, never below 1 SOL in the funder, per-IP throttle keyed on Fly's `fly-client-ip` instead of the forgeable `x-forwarded-for`.
+
+## 2026-11-26: The action escrow is refilled before it can wedge a player
+- Found on devnet: a two-card `claim_all` with 2,004,160 lamports in the action escrow could pay both receipts but would have left the escrow below rent. That is a transaction-level error (`InsufficientFundsForRent`), not an instruction error, so the committor did not strip the actions and retry: the commit was lost. No later commit of that Player landed, `undelegate_player` is refused while claims are in flight, and the keeper cannot pay what Solana has not seen. Reproduced on a throwaway player; topping up afterwards and claiming again did not recover it.
+- Decision: the client refills the escrow to 0.05 SOL whenever it is under 0.03 SOL, before `claim_all` (one wallet-signed base transaction). No program change.
+- Not fixed: players already wedged stay wedged (use a new wallet on devnet). Report to MagicBlock.
