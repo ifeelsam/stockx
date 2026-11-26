@@ -80,8 +80,8 @@ export function PackRip({ feed, count, demo, paused, ripping, price, onRip }: { 
   const card = useAnimatedStyle(() => ({ opacity: rise.value > 0 ? 1 : 0, transform: [{ translateY: 190 * (1 - rise.value) }] }));
 
   const tx = Math.max(1, tear * W);
-  const pack = <HoloPack feed={feed} count={count} demo={demo} paused={paused} offset={tear * 0.6} width={W} />;
-  const half = (part: "strip" | "body") => <HoloPack feed={feed} count={count} demo={demo} paused={paused} offset={tear * 0.6} width={W} part={part} />;
+  const pack = <HoloPack feed={feed} count={count} demo={demo} paused={paused} width={W} />;
+  const half = (part: "strip" | "body") => <HoloPack feed={feed} count={count} demo={demo} paused={paused} width={W} part={part} />;
   const sealed = !ripping && tear === 0;
 
   return (
@@ -95,23 +95,21 @@ export function PackRip({ feed, count, demo, paused, ripping, price, onRip }: { 
             <CardBack width={258} />
           </Animated.View>
         )}
-        {sealed ? (
-          pack
-        ) : (
-          <>
-            <Animated.View style={[{ position: "absolute", top: SY, width: W, height: H - SY, overflow: "hidden" }, bodyStyle]}>
-              <View style={{ marginTop: -SY }}>{half("body")}</View>
-            </Animated.View>
-            {/* not yet torn */}
-            <Animated.View style={[{ position: "absolute", left: tx, top: 0, width: W - tx, height: SY + 6, overflow: "hidden" }, stripB]}>
-              <View style={{ marginLeft: -tx }}>{half("strip")}</View>
-            </Animated.View>
-            {/* peeled: hinged at the tear point */}
-            <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: tx, height: SY + 6, overflow: "hidden", transformOrigin: "right bottom" }, stripA]}>
-              {half("strip")}
-            </Animated.View>
-          </>
-        )}
+        {sealed && pack}
+        {/* the halves stay mounted so their art is already loaded when the drag starts */}
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, width: W, height: H, opacity: sealed ? 0 : 1 }}>
+          <Animated.View style={[{ position: "absolute", top: SY, width: W, height: H - SY, overflow: "hidden" }, bodyStyle]}>
+            <View style={{ marginTop: -SY }}>{half("body")}</View>
+          </Animated.View>
+          {/* not yet torn */}
+          <Animated.View style={[{ position: "absolute", left: tx, top: 0, width: W - tx, height: SY + 6, overflow: "hidden" }, stripB]}>
+            <View style={{ marginLeft: -tx }}>{half("strip")}</View>
+          </Animated.View>
+          {/* peeled: hinged at the tear point */}
+          <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: tx, height: SY + 6, overflow: "hidden", transformOrigin: "right bottom" }, stripA]}>
+            {half("strip")}
+          </Animated.View>
+        </View>
         {!ripping && (
           <View {...pan.panHandlers} accessible accessibilityRole="button" accessibilityLabel={`Tear the pack open and buy ${count} card${count > 1 ? "s" : ""} for ${price}`} onAccessibilityTap={() => !live.current.off && onRip()} style={{ position: "absolute", left: -14, right: -14, top: 18, height: 76 }}>
             {/* Android draws a one-sided dashed border as a solid line, so the dashes are views */}

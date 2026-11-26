@@ -18,7 +18,8 @@ function Slot({ k, x, onPress, label, children }: { k: number; x: SharedValue<nu
     return { opacity: 1 - ad * 0.35, transform: [{ translateY: ad * 10 }, { rotate: `${-Math.max(-1, Math.min(1, d)) * 4}deg` }, { scale: 1 - ad * 0.13 }] };
   });
   return (
-    <Animated.View style={[{ transformOrigin: "center bottom" }, style]}>
+    // fade each pack as one picture: otherwise Android fades every layer on its own and the art shows through the labels
+    <Animated.View needsOffscreenAlphaCompositing style={[{ transformOrigin: "center bottom" }, style]}>
       <Pressable onPress={onPress} accessibilityLabel={label}>{children}</Pressable>
     </Animated.View>
   );

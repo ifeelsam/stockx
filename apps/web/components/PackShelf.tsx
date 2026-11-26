@@ -122,7 +122,7 @@ export function PackShelf({ picked, onPick }: { picked: number; onPick: (i: numb
             >
               {/* tilt an inner layer: snapping aims at the button's box, which must not move */}
               <div className="origin-bottom" style={{ transform: `translateY(${ad * 10}px) rotate(${-Math.max(-1, Math.min(1, d)) * 4}deg) scale(${1 - ad * 0.13})`, opacity: 1 - ad * 0.35 }}>
-                {near && <HoloPack feed={s.feed} demo={s.demo} paused={isPaused(g, s.feed)} offset={Math.round(d * 10) / 10} />}
+                {near && <HoloPack feed={s.feed} demo={s.demo} paused={isPaused(g, s.feed)} />}
               </div>
             </button>
           );

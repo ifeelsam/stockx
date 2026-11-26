@@ -106,3 +106,8 @@
 - Found on devnet: a two-card `claim_all` with 2,004,160 lamports in the action escrow could pay both receipts but would have left the escrow below rent. That is a transaction-level error (`InsufficientFundsForRent`), not an instruction error, so the committor did not strip the actions and retry: the commit was lost. No later commit of that Player landed, `undelegate_player` is refused while claims are in flight, and the keeper cannot pay what Solana has not seen. Reproduced on a throwaway player; topping up afterwards and claiming again did not recover it.
 - Decision: the client refills the escrow to 0.05 SOL whenever it is under 0.03 SOL, before `claim_all` (one wallet-signed base transaction). No program change.
 - Not fixed: players already wedged stay wedged (use a new wallet on devnet). Report to MagicBlock.
+
+## 2026-11-27: Packs use rendered foil art with the companies' logos
+- Decision (owner): the three packs look like the owner's reference renders. The art is cut from those images (`packages/ui-tokens/art/`) and shared by web and mobile; the card count, demo-odds label and paused band are still drawn by the apps, and the printed Grail line is covered on the demo pack.
+- Supersedes "pack art shows the ticker as text, no company logos" (2026-11-25). Tesla, Nvidia and Solana names and logos are trademarks and no permission was obtained; replace the art before any public or commercial use beyond this devnet demo.
+- The "Solana · 24/7" wording is gone with the old drawn pack.

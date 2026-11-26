@@ -204,11 +204,18 @@ export const FINISH: Record<TierKey, CardFinish> = {
   grail: { frame: "#FFD84D", holo: 1, cardHolo: 0.25, full: true, filledBadge: true, sparkle: true },
 };
 
-export type StockLook = { symbol: string; company: string; packName: string; pack: string; art: string };
+export type StockLook = {
+  symbol: string;
+  company: string;
+  art: string;
+  /** colour of the header printed on the pack's top seal, and of the light the pack throws (art/*.png) */
+  foilInk: string;
+  glow: string;
+};
 export const STOCK_LOOK: Record<"TSLA" | "NVDA" | "SOL", StockLook> = {
-  TSLA: { symbol: "TSLA", company: "Tesla", packName: "Tesla", pack: "#FF5B2E", art: "#FF5B2E" },
-  NVDA: { symbol: "NVDA", company: "Nvidia", packName: "Nvidia", pack: "#1FAF6A", art: "#1FAF6A" },
-  SOL: { symbol: "SOL", company: "Solana", packName: "Solana \u00b7 24/7", pack: "#8F6BFF", art: "#5B3FA8" },
+  TSLA: { symbol: "TSLA", company: "Tesla", art: "#FF5B2E", foilInk: "#170507", glow: "#FF2D3A" },
+  NVDA: { symbol: "NVDA", company: "Nvidia", art: "#1FAF6A", foilInk: "#DCFF8F", glow: "#86E81C" },
+  SOL: { symbol: "SOL", company: "Solana", art: "#5B3FA8", foilInk: "#E9F2FF", glow: "#8B5CFF" },
 };
 
 // ---- what screens say about money, odds and cards (shared so web and mobile never disagree) ----------
@@ -265,14 +272,3 @@ export function describeCard(
   return { tier: t, usd, value, face, caption };
 }
 
-/** Foil pouch outline as an SVG path (220\u00d7330): crimped top and bottom seals, pinched sides. */
-export const PACK_PATH = (() => {
-  const W = 220, H = 330, Z = 5, n = 22, S = 26;
-  let d = `M 0 ${Z}`;
-  for (let k = 1; k <= n; k++) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? 0 : Z}`;
-  d += ` L ${W} ${S} C ${W - 1} ${S + 6} ${W - 9} ${S + 10} ${W - 8} ${S + 22}`;
-  d += ` C ${W + 1} ${H * 0.36} ${W + 1} ${H * 0.64} ${W - 8} ${H - S - 22} C ${W - 9} ${H - S - 10} ${W - 1} ${H - S - 6} ${W} ${H - S} L ${W} ${H - Z}`;
-  for (let k = n - 1; k >= 0; k--) d += ` L ${((k * W) / n).toFixed(1)} ${k % 2 ? H : H - Z}`;
-  d += ` L 0 ${H - S} C 1 ${H - S - 6} 9 ${H - S - 10} 8 ${H - S - 22} C -1 ${H * 0.64} -1 ${H * 0.36} 8 ${S + 22} C 9 ${S + 10} 1 ${S + 6} 0 ${S} Z`;
-  return d;
-})();

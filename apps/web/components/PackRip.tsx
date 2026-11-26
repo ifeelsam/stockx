@@ -21,7 +21,7 @@ export function PackRip({ feed, count, demo, paused, busy, price, onRip }: { fee
   return (
     <div className="flex flex-col items-center">
       <div className={`relative ${busy ? "pack-shake" : "bob"}`}>
-        <HoloPack feed={feed} count={count} demo={demo} paused={paused} offset={shown * 0.8} width={286} />
+        <HoloPack feed={feed} count={count} demo={demo} paused={paused} width={286} />
         <button
           type="button"
           disabled={off}
