@@ -9,7 +9,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "echo no tests",
     "e2e:devnet": "tsx src/e2e.ts",
-    "conformance:devnet": "tsx src/conformance.ts"
+    "conformance:devnet": "tsx src/conformance.ts",
+    "set-price": "tsx src/set-price.ts"
   },
   "dependencies": {
     "@scratchers/sdk": "workspace:*",

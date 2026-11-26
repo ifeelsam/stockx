@@ -90,3 +90,6 @@
 - **Commit-fee reserve is topped up from the client** with `lamportsDelegatedTransferIx` when under 0.003 SOL. The 0.01 SOL from `signup` covers about 35 commits per delegation. No program change.
 - **Keeper payout repair judges claims by the rollup copy.** Judging by the committed base snapshot dropped a player whose commit had not landed yet, so dropped Magic Actions were never repaired.
 - **Not done:** `VaultState` is not committed periodically and has no delegated payer + `magic_fee_vault` (CLAUDE.md §3); it only commits on admin undelegate. Onboarding asks the wallet for four signatures, not at most two (§6). Apps use the fixed asia rollup rather than the router (the router agrees for every delegated account).
+
+## 2026-11-26: NVDA is priced by hand at the last session's typical price
+- Decision (owner): keep the NVDA pack and price it at the day's average. The Pyth token has no NVDA feed and 2026-11-26 is a US market holiday, so the value is the 2026-11-25 typical price (high 150.37 + low 141.17 + close 149.30) / 3 = **$146.95**, from public web quotes (not a VWAP). Set with `set-price mNVDA 146.95` and held by the keeper (`KEEPER_HOLD_FEEDS`), which now re-publishes the on-chain value. Devnet only; it does not update itself.

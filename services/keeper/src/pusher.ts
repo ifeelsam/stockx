@@ -39,7 +39,8 @@ export function startPusher(o: { program: ScratchersProgram; rollup: Connection;
         if (!shouldHold(f.name, lastPush.get(f.name)?.at, Date.now(), source.unavailable?.() ?? new Set(), o.holdFeeds)) continue;
         const id = Uint8Array.from(Buffer.from(f.idHex, "hex"));
         const prev = lastPush.get(f.name);
-        const chain = prev ? { price: prev.price, ts: prev.publishTs } : await readOnChain(program, rollup, id);
+        // hold what is on chain, not what we last sent: a price set by hand (scripts set-price) must stick
+        const chain = await readOnChain(program, rollup, id);
         if (chain.price <= 0n) continue;
         const ts = Math.max(chain.ts + 1, Math.floor(Date.now() / 1000));
         await sendIx(rollup, keeper, [await pushPriceIx(program, keeper.publicKey, id, chain.price, 0n, ts)]);
