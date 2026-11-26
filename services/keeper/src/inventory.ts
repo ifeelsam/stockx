@@ -18,8 +18,10 @@ export function startInventory(o: { program: ScratchersProgram; base: Connection
     for (const stock of ["mTSLA", "mNVDA", "mSOL"]) {
       try {
         const mint = new PublicKey(deployments.mints[stock]);
-        const v = await program.account.vaultState.fetch(vaultPda(mint), "confirmed").catch(() => null);
-        if (!v) continue;
+        // VaultState is delegated: the live copy is on the rollup, the base one is a stale snapshot
+        const info = await rollup.getAccountInfo(vaultPda(mint), "confirmed").catch(() => null);
+        if (!info) continue;
+        const v = program.coder.accounts.decode("vaultState", info.data);
         const available = BigInt(v.availableSharesMirror.toString());
         const reserved = BigInt(v.reservedShares.toString());
         const free = available - reserved;

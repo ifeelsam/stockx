@@ -52,6 +52,8 @@ test("planWalk stays inside the band and lands exactly on the target", () => {
   const down = planWalk(26_000_000_000n, 20_000_000_000n, band);
   assert.equal(down.at(-1), 20_000_000_000n);
   assert.deepEqual(planWalk(0n, 5n, band), [5n]); // first push has no band
+  // regression: a closed market repeats the same price; with no step the feed and quote silently went stale
+  assert.deepEqual(planWalk(383_23000000n, 383_23000000n, band), [383_23000000n]);
 });
 
 import { planQuote } from "./quotes.js";

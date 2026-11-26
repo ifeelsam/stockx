@@ -122,7 +122,8 @@ export function isUsMarketOpen(now = new Date()): boolean {
  * buys stay paused until the final, fresh step lands.
  */
 export function planWalk(prev: bigint, target: bigint, maxMoveBps: number): bigint[] {
-  if (prev <= 0n) return [target];
+  // an unchanged price still needs one push: it is what keeps the timestamp (and the sell quote) fresh
+  if (prev <= 0n || prev === target) return [target];
   const stepBps = BigInt(Math.max(1, maxMoveBps - 10)); // stay clear of the limit
   const steps: bigint[] = [];
   let cur = prev;
