@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { multiplierOf, totalWeight } from "@scratchers/sdk/pure";
 import { isPaused, seriesById, useGame, VISIBLE_SERIES, type UiCard } from "@scratchers/app-core";
 import { cardUsd, colors, describeCard, money, oddsText, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
@@ -16,6 +17,12 @@ import { Prizes } from "./Prizes";
 const CW = 258;
 const STEP = CW + 16;
 type Shown = UiCard & { art: NonNullable<UiCard["art"]> };
+
+const Chevron = () => (
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M15 5l-7 7 7 7" />
+  </Svg>
+);
 
 /** Packs: the shop, the sealed pack, then one card at a time. */
 export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onBinder: () => void }) {
@@ -84,7 +91,7 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
   if (view === "odds")
     return (
       <View style={ui.screen}>
-        <Pressable onPress={() => setView("shop")} style={{ padding: 16 }}><Text style={ui.strong}>‹ Packs</Text></Pressable>
+        <Pressable onPress={() => setView("shop")} style={[ui.row, { gap: 8, padding: 16 }]}><Chevron /><Text style={ui.strong}>Packs</Text></Pressable>
         <Prizes />
       </View>
     );
@@ -159,7 +166,7 @@ export function Play({ onProof, onBinder }: { onProof: (id: number) => void; onB
   return (
     <View style={ui.screen}>
       <View style={[ui.row, { justifyContent: "space-between", paddingHorizontal: 12 }]}>
-        <Pressable onPress={() => setView("shop")} accessibilityLabel="Back to packs" style={{ padding: 12 }}><Text style={[ui.strong, { fontSize: 22 }]}>‹</Text></Pressable>
+        <Pressable onPress={() => setView("shop")} accessibilityLabel="Back to packs" style={{ padding: 12 }}><Chevron /></Pressable>
         <Text style={[ui.mono, { color: colors.textDim }]}>{sealed ? `${s.feed} pack · ${count} card${count > 1 ? "s" : ""}` : atSummary ? "pack done" : `card ${active + 1} / ${live.length} · swipe`}</Text>
       </View>
       {setupCard}

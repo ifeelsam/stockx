@@ -53,7 +53,10 @@ export function PackRip({ feed, count, demo, paused, busy, price, onRip }: { fee
       <View>
         <HoloPack feed={feed} count={count} demo={demo} paused={paused} offset={shown * 0.8} width={W} />
         <View {...pan.panHandlers} accessible accessibilityRole="button" accessibilityLabel={`Tear the pack open and buy ${count} card${count > 1 ? "s" : ""} for ${price}`} onAccessibilityTap={() => !live.current.off && onRip()} style={{ position: "absolute", left: -10, right: -10, top: 0, height: 72 }}>
-          <View style={{ position: "absolute", left: 20, right: 20, top: 40, borderTopWidth: 2, borderStyle: "dashed", borderColor: "rgba(242,239,250,0.85)" }} />
+          {/* Android draws a one-sided dashed border as a solid line, so the dashes are views */}
+          <View style={{ position: "absolute", left: 20, right: 20, top: 40, height: 2, flexDirection: "row", justifyContent: "space-between" }}>
+            {Array.from({ length: 22 }, (_, i) => <View key={i} style={{ width: 7, height: 2, backgroundColor: "rgba(242,239,250,0.85)" }} />)}
+          </View>
           <View style={{ position: "absolute", left: 20, top: 38, height: 6, width: shown * (W - 20), borderRadius: 3, backgroundColor: colors.text }} />
           <View style={{ position: "absolute", left: 3 + shown * (W - 20), top: 24, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.text, alignItems: "center", justifyContent: "center", elevation: 6 }}>
             <Text style={{ color: colors.ink, fontSize: 22, lineHeight: 24 }}>›</Text>
