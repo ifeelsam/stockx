@@ -229,3 +229,15 @@ test("card history reads only events our program logged", () => {
   assert.deepEqual(programEvents(program, run(PROGRAM_ID.toBase58())).map((e) => e.name), ["cardRevealed"]);
   assert.deepEqual(programEvents(program, run("Memo1111111111111111111111111111111111111")), [], "a look-alike line from another program is ignored");
 });
+
+test("patchBuffer keeps subarray() a Buffer where the engine drops the subclass (Hermes)", () => {
+  class Hermes extends Uint8Array {
+    static alloc(n: number) { return new Hermes(n); }
+  }
+  Hermes.prototype.subarray = function (this: Uint8Array, a?: number, b?: number) { return new Uint8Array(this.buffer, this.byteOffset, this.byteLength).subarray(a, b); } as typeof Hermes.prototype.subarray;
+  assert.ok(!(Hermes.alloc(4).subarray(0) instanceof Hermes));
+  patchBuffer(Hermes);
+  const view = Hermes.alloc(4).subarray(1, 3);
+  assert.ok(view instanceof Hermes);
+  assert.equal(view.length, 2);
+});

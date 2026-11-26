@@ -8,7 +8,16 @@
  * web3.js / anchor call `writeBigUInt64LE` etc. for u64 fields. Add them to a Buffer class's prototype.
  * Node's native Buffer already has them (patching is a no-op there).
  */
-export function patchBuffer(_B?: unknown): void {
+export function patchBuffer(B?: unknown): void {
+  // Hermes ignores species: `buffer.subarray()` comes back as a bare Uint8Array without `readUInt32LE` and friends,
+  // so every anchor account/event decode throws "undefined is not a function". Give the view its Buffer prototype.
+  const buf = B as { prototype: Uint8Array; alloc?(n: number): Uint8Array } | undefined;
+  if (buf?.alloc && !(buf.alloc(1).subarray(0) instanceof (buf as unknown as Function))) {
+    const subarray = buf.prototype.subarray;
+    buf.prototype.subarray = function (this: Uint8Array, start?: number, end?: number) {
+      return Object.setPrototypeOf(subarray.call(this, start, end), buf.prototype);
+    };
+  }
   const p = Uint8Array.prototype as unknown as Record<string, any>;
   const put = (name: string, fn: unknown) => {
     if (typeof p[name] !== "function") p[name] = fn;
