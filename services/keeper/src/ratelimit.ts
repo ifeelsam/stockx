@@ -11,3 +11,19 @@ export class Cooldown {
     return 0;
   }
 }
+
+/**
+ * Caps SOL drips for a public faucet: new wallets are free to make, so per-wallet limits cannot protect the funder.
+ * Refuses past `perHour` drips in any hour, and whenever the funder would fall under `floorLamports`.
+ * ponytail: in memory, so a restart resets the hour; the floor still holds.
+ */
+export class DripBudget {
+  private drips: number[] = [];
+  constructor(private perHour: number, private floorLamports: number) {}
+  take(funderLamports: number, dripLamports: number, now = Date.now()): boolean {
+    this.drips = this.drips.filter((t) => now - t < 3_600_000);
+    if (this.drips.length >= this.perHour || funderLamports - dripLamports < this.floorLamports) return false;
+    this.drips.push(now);
+    return true;
+  }
+}

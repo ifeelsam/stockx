@@ -97,3 +97,7 @@
 ## 2026-11-26: The binder is rebuilt from rollup logs
 - The program fills the first free card slot, settled ones included, so each new pack overwrote the previous one while 22 slots stayed empty. The apps now rebuild past cards from `CardBought`/`CardRevealed` logs on the rollup (`fetchCardHistory`) and keep what they see during the session. No program change.
 - Limit: up to 1,000 transactions (about 300 cards) and only as far back as the rollup keeps them. A server-side index is the durable answer.
+
+## 2026-11-26: Keeper stays; native cranks cannot replace it. Faucet capped before going public
+- A MagicBlock crank repeats instructions whose accounts and data are fixed when scheduled (`ScheduleTaskArgs { task_id, execution_interval_millis, iterations, instructions }`, SDK 0.18.0 crates), so it cannot fetch a price. Re-sending one `push_price` is rejected after the first (timestamp must increase). The faucet is a web endpoint and the sell quote and payout repair are base-layer transactions signed with our keys. On validator 2.0 (our rollup runs 2.0.5) scheduled instructions also cannot carry signers, and they fire only while a Hydra cranker runs.
+- Public faucet: at most 6 SOL drips per hour, never below 1 SOL in the funder, per-IP throttle keyed on Fly's `fly-client-ip` instead of the forgeable `x-forwarded-for`.

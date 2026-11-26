@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CardState } from "@scratchers/sdk";
-import { Cooldown } from "./ratelimit.js";
+import { Cooldown, DripBudget } from "./ratelimit.js";
 import { isUsMarketOpen, planWalk, toFeedUnits } from "./prices.js";
 import { planRepairs, type CardLite } from "./repair.js";
 
@@ -25,6 +25,15 @@ test("cooldown allows once per window per key", () => {
   assert.equal(c.take("a", 400), 600);
   assert.equal(c.take("b", 400), 0);
   assert.equal(c.take("a", 1000), 0);
+});
+
+test("SOL drips stop at the hourly cap and above the funder's floor", () => {
+  const b = new DripBudget(2, 1_000);
+  assert.equal(b.take(5_000, 150, 0), true);
+  assert.equal(b.take(5_000, 150, 1), true);
+  assert.equal(b.take(5_000, 150, 2), false, "third drip in the hour");
+  assert.equal(b.take(5_000, 150, 3_600_001), true, "the window slides");
+  assert.equal(new DripBudget(9, 1_000).take(1_100, 150, 0), false, "would leave the funder under the floor");
 });
 
 test("repair planner waits out the grace period, repairs, then settles", () => {

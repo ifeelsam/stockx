@@ -36,6 +36,7 @@ export function loadConfig(env = process.env) {
     repairGraceMs: Number(env.REPAIR_GRACE_MS ?? 20_000),
     faucetOrigin: env.FAUCET_ORIGIN ?? "*",
     faucetCooldownMs: Number(env.FAUCET_COOLDOWN_MS ?? 60_000),
+    solDripsPerHour: Number(env.FAUCET_SOL_DRIPS_PER_HOUR ?? 6),
     refillStock: env.REFILL_STOCK === "1", // devnet mock refill only
   };
 }

@@ -33,7 +33,7 @@ startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: pric
 startRepair({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments, graceMs: cfg.repairGraceMs });
 startInventory({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, mintAuthority: cfg.faucet, deployments: cfg.deployments, refill: cfg.refillStock });
 startQuotes({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments });
-const faucet = makeFaucet({ base: c.base, authority: cfg.faucet, deployments: cfg.deployments, cooldownMs: cfg.faucetCooldownMs });
+const faucet = makeFaucet({ base: c.base, authority: cfg.faucet, deployments: cfg.deployments, cooldownMs: cfg.faucetCooldownMs, solDripsPerHour: cfg.solDripsPerHour });
 
 // Staleness watcher: age of each on-chain price; warn once a feed goes stale (market closed or relay down).
 setInterval(async () => {
@@ -62,7 +62,7 @@ const server = createServer(async (req, res) => {
   if (req.url === "/metrics") return send(200, metrics(), "text/plain");
   if (req.url === "/faucet" && req.method === "POST") {
     let raw = ""; for await (const ch of req) { raw += ch; if (raw.length > 1024) return send(413, { error: "too large" }); }
-    try { const { wallet } = JSON.parse(raw); const r = await faucet(String(wallet), String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress)); return send(r.status, r.body); }
+    try { const { wallet } = JSON.parse(raw); const r = await faucet(String(wallet), /* set by Fly's proxy; x-forwarded-for can be forged by the caller */ String(req.headers["fly-client-ip"] ?? req.socket.remoteAddress)); return send(r.status, r.body); }
     catch (e) { log("error", "faucet failed", { err: (e as Error).message }); return send(500, { error: "faucet failed" }); }
   }
   send(404, { error: "not found" });
