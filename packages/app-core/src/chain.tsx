@@ -6,7 +6,7 @@
  * The on-chain rules it relies on are checked live by scripts/src/conformance.ts; this React flow itself
  * has not been run end to end with a real login.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
@@ -55,8 +55,6 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const [setup, setSetup] = useState<NonNullable<Game["setup"]>["status"]>("checking");
   const [step, setStep] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const claimed = useRef(new Set<number>());
-  const cost = useRef(new Map<string, number>()); // ticker → USD cost basis from this session's claims
 
   // ---- polling: prices, status page, player cards, holdings, stats ------------------------------
   useEffect(() => {
@@ -99,7 +97,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
         const shares = Number(bal?.value.amount ?? 0) / 1e6;
         if (shares > 0) {
           const feed = s.slice(1) as Holding["feed"];
-          hs.push({ ticker: s, feed, shares, costUsd: cost.current.get(s) ?? shares * (prices[feed] || 0) });
+          hs.push({ ticker: s, feed, shares, costUsd: 0 }); // priced from the card history below
         }
       }
       setHoldings(hs);
@@ -206,8 +204,9 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const run = useCallback(async () => {
     setError(null);
     try {
-      await ensureFunds();
       let r = await check();
+      // an existing delegated account only needs a session (gasless on the rollup): no faucet, so no keeper needed
+      if (r.step !== "session") await ensureFunds();
       if (r.step === "signup" || r.step === "delegate") {
         setStep(r.step);
         const tx = new Transaction();
@@ -293,10 +292,6 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       for (let i = 0; i < list.length; i += 8) {
         const tx = new Transaction().add(await claimAllIx(rollup, sessionKey.publicKey, user, seriesId, new PublicKey(dep.mints[sd.stock]), validator));
         await signAndSend(c.rollup, sessionKey, tx);
-        for (const k of list.slice(i, i + 8)) {
-          claimed.current.add(k.id);
-          if (k.shares) cost.current.set(sd.stock, (cost.current.get(sd.stock) ?? 0) + k.shares * k.lockedPrice);
-        }
       }
     }
   }, [cards, dep, rollup, sessionKey, user, validator, c, ensureCommitReserve, requireSession]);
@@ -318,6 +313,18 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     [dep, base, c, signer, usdcMint],
   );
 
+  // cost basis = average locked price of the claimed cards, so every device shows the same "since pulled"
+  const priced = useMemo(
+    () =>
+      holdings.map((h) => {
+        const own = cards.filter((k) => (k.state === "settled" || k.state === "claiming") && seriesById(k.seriesId).ticker === h.ticker);
+        const won = own.reduce((a, k) => a + k.shares, 0);
+        const paid = own.reduce((a, k) => a + k.shares * k.lockedPrice, 0);
+        return { ...h, costUsd: h.shares * (won ? paid / won : prices[h.feed]) };
+      }),
+    [holdings, cards, prices],
+  );
+
   const value = useMemo<Game>(
     () => ({
       backend: "chain",
@@ -329,7 +336,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       paused,
       degraded,
       cards,
-      holdings,
+      holdings: priced,
       buy,
       markFlipped: (id) => setFlipped((s) => new Set(s).add(id)),
       claimAll,
@@ -338,7 +345,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       setup: { status: setup, step, error, run },
       stats,
     }),
-    [usdc, prices, history, paused, degraded, cards, holdings, buy, claimAll, faucet, sell, setup, step, error, run, stats],
+    [usdc, prices, history, paused, degraded, cards, priced, buy, claimAll, faucet, sell, setup, step, error, run, stats],
   );
   return <GameCtx.Provider value={value}>{children}</GameCtx.Provider>;
 }
