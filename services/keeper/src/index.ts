@@ -52,7 +52,7 @@ const metrics = () => [
   ...[...vaultHealth.values()].flatMap((v) => [`scratchers_vault_free_shares{stock="${v.stock}"} ${v.free}`, `scratchers_vault_reserved_shares{stock="${v.stock}"} ${v.reserved}`]),
 ].join("\n") + "\n";
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const cors = { "access-control-allow-origin": cfg.faucetOrigin, "access-control-allow-headers": "content-type", "access-control-allow-methods": "POST,GET,OPTIONS" };
   const send = (status: number, body: unknown, type = "application/json") => { res.writeHead(status, { "content-type": type, ...cors }); res.end(typeof body === "string" ? body : JSON.stringify(body)); };
   if (req.method === "OPTIONS") return send(204, "");
@@ -65,4 +65,11 @@ createServer(async (req, res) => {
     catch (e) { log("error", "faucet failed", { err: (e as Error).message }); return send(500, { error: "faucet failed" }); }
   }
   send(404, { error: "not found" });
-}).listen(cfg.port, () => log("info", "keeper listening", { port: cfg.port, program: cfg.deployments.program, priceSource: cfg.priceSource }));
+});
+// A taken port means another keeper is running. Two keepers fight over prices and the apps keep talking to the old one,
+// so stop here (the process guards would otherwise swallow this and carry on).
+server.on("error", (e: NodeJS.ErrnoException) => {
+  log("error", e.code === "EADDRINUSE" ? "port in use: another keeper is already running, stop it first" : "http server failed", { port: cfg.port, err: e.message });
+  process.exit(1);
+});
+server.listen(cfg.port, () => log("info", "keeper listening", { port: cfg.port, program: cfg.deployments.program, priceSource: cfg.priceSource }));
