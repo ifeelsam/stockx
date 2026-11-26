@@ -1,6 +1,7 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
+import { ProfileMenu } from "./ProfileMenu";
 
 export const hasPrivy = !!process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
@@ -10,7 +11,7 @@ export function LoginButton() {
 }
 
 function PrivyLogin() {
-  const { ready, authenticated, login, logout } = usePrivy();
+  const { ready, authenticated, login, logout, user } = usePrivy();
   const { wallets } = useWallets();
   if (!ready) return <span className="shim h-11 w-20 rounded-full bg-surface" />;
   if (!authenticated)
@@ -19,10 +20,5 @@ function PrivyLogin() {
         Log in
       </button>
     );
-  const addr = wallets[0]?.address;
-  return (
-    <button onClick={logout} className="min-h-11 rounded-full border border-[#3A3350] px-3.5 text-[13px]" title="Log out">
-      <span className="num">{addr ? `${addr.slice(0, 4)}…${addr.slice(-4)}` : "wallet…"}</span>
-    </button>
-  );
+  return <ProfileMenu address={wallets[0]?.address} label={user?.email?.address ?? user?.google?.email} onLogout={logout} />;
 }

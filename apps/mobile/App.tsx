@@ -12,6 +12,7 @@ import { env } from "./src/env";
 import { WalletProvider, useWallet } from "./src/lib/wallets";
 import { GameHost } from "./src/lib/GameHost";
 import { Banners } from "./src/components/Banners";
+import { ProfileMenu } from "./src/components/ProfileMenu";
 import { Brand } from "./src/components/Logo";
 import { Login } from "./src/screens/Login";
 import { Play } from "./src/screens/Play";
@@ -48,7 +49,7 @@ function Shell() {
         <Pressable onPress={addFunds} disabled={funding} accessibilityLabel={`Balance ${money(g.usdc)}. Add 100 test USDC`} style={{ minHeight: 44, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: "#3A3350", justifyContent: "center" }}>
           <Text style={[ui.mono, { fontFamily: font.monoBold }]}>{funding ? "adding…" : `${money(g.usdc)} +`}</Text>
         </Pressable>
-        <Pressable onPress={w.logout} accessibilityLabel="Log out" style={{ minHeight: 44, justifyContent: "center" }}><Text style={[ui.mono, { color: colors.textDim, fontSize: 11 }]}>{w.address ? `${w.address.slice(0, 4)}…${w.address.slice(-4)}` : "guest"} ⎋</Text></Pressable>
+        <ProfileMenu />
       </View>
       <Banners />
       <View style={{ flex: 1 }}>

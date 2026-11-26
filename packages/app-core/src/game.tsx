@@ -43,6 +43,14 @@ export type Game = {
   sell(ticker: string, shares: number): void;
   /** chain backend only: account onboarding (signup, delegate, session, funds). Undefined on the mock. */
   setup?: { status: "checking" | "needed" | "ready"; step: string; error: string | null; run(): Promise<void> };
+  /** chain backend only: what the profile menu shows */
+  account?: {
+    address: string;
+    sol: number;
+    /** this device's play session; null when expired, revoked or taken over by another device */
+    session: { expires: number; capUsd: number } | null;
+    endSession(): Promise<void>;
+  };
   /** lifetime counters for the dashboard */
   stats: { sold: number; tierCounts: number[]; paidShares: number };
 };
@@ -57,6 +65,13 @@ export const useGame = () => {
 
 const START: Prices = { TSLA: 248.31, NVDA: 141.07, SOL: 168.42 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const shortAddress = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
+export const explorerUrl = (a: string) => `https://explorer.solana.com/address/${a}?cluster=devnet`;
+/** "23h 12m" until a unix time (seconds). */
+export const timeLeft = (expires: number) => {
+  const m = Math.max(0, Math.floor((expires - Date.now() / 1000) / 60));
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+};
 export const isEquity = (feed: string) => feed !== "SOL";
 /** Is buying on this price feed paused right now? */
 export const isPaused = (g: Pick<Game, "marketClosed" | "paused">, feed: keyof Prices) => (g.paused ? !!g.paused[feed] : isEquity(feed) && g.marketClosed);

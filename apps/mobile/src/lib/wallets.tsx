@@ -9,6 +9,8 @@ export type WalletKind = "privy" | "seeker" | "guest";
 type Wallet = {
   kind: WalletKind | null;
   address: string | null;
+  /** the email the account signed in with, when there is one */
+  label: string | null;
   signer: Signer | null;
   availability: WalletAvailability | "unknown";
   ready: boolean;
@@ -69,7 +71,7 @@ function useSeeker() {
   return { address, availability, ready, connect, disconnect };
 }
 
-function usePrivySigner(): { address: string | null; signer: Signer | null; ready: boolean; logout: () => Promise<void> } {
+function usePrivySigner(): { address: string | null; label: string | null; signer: Signer | null; ready: boolean; logout: () => Promise<void> } {
   const { user, isReady, logout } = usePrivy();
   const sol = useEmbeddedSolanaWallet();
   useEffect(() => {
@@ -87,7 +89,8 @@ function usePrivySigner(): { address: string | null; signer: Signer | null; read
       },
     };
   }, [w]);
-  return { address: w?.address ?? null, signer, ready: isReady, logout };
+  const label = user?.linked_accounts.map((a) => (a.type === "email" ? a.address : a.type === "google_oauth" ? a.email : null)).find(Boolean) ?? null;
+  return { address: w?.address ?? null, label, signer, ready: isReady, logout };
 }
 
 function Host({ children, privy }: { children: ReactNode; privy: ReturnType<typeof usePrivySigner> | null }) {
@@ -101,6 +104,7 @@ function Host({ children, privy }: { children: ReactNode; privy: ReturnType<type
     return {
       kind,
       address: kind === "seeker" ? seeker.address : kind === "privy" ? privy!.address : null,
+      label: kind === "privy" ? privy!.label : null,
       signer: kind === "seeker" ? seekerSignerMemo : kind === "privy" ? privy!.signer : null,
       availability: seeker.availability,
       ready: seeker.ready && (privy ? privy.ready : true),

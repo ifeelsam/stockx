@@ -82,3 +82,7 @@ Keeper now relays real Pyth Pro prices (TSLA, SOL) to the rollup and posts sell 
 ## Verification gaps (honest list)
 - Nothing has run on devnet yet. MagicSVM models the delegation program, VRF, commits and Magic Actions, but not the router, real VRF oracle, commit limits/fees, or the real committor's drop-the-action behaviour.
 - Treasury token account for USDC must be created as a Magic ATA on the rollup (SDK `create_magic_ata_ix`); MagicSVM tests use delegated token accounts instead.
+
+## 2026-11-26: account menu
+
+Web and Android: tapping the address opens a dropdown (sign-in email, full address with copy and explorer, play balance, SOL, stock held, pending payouts, play session with "End session", log out). Checked on the emulator: open, copy, close by tapping outside. Not tapped: End session, Log out. Web: layout and dismissal checked with the same classes; the signed-in menu was not seen with a real login.

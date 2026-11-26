@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
-  buyCardIx, CardState, claimAllIx, fetchCardHistory, waitForRollupUsdc, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
+  buyCardIx, CardState, claimAllIx, fetchCardHistory, waitForRollupUsdc, connect, createSessionIx, revokeSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
   ACTION_ESCROW_LAMPORTS, actionEscrowShortfall, escrowPda, PLAYER_RESERVE_LOW_LAMPORTS, topUpPlayerReserveIx, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
   type PastCard, type Signer, type SessionKeySigner,
 } from "@scratchers/sdk";
@@ -55,6 +55,8 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const [setup, setSetup] = useState<NonNullable<Game["setup"]>["status"]>("checking");
   const [step, setStep] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sol, setSol] = useState(0);
+  const [session, setSession] = useState<{ expires: number; capUsd: number } | null>(null);
 
   // ---- polling: prices, status page, player cards, holdings, stats ------------------------------
   useEffect(() => {
@@ -88,9 +90,13 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     loop(async () => {
       const p = await fetchPlayer(rollup, user);
       setUsdc(Number(p.usdcBalanceE6.toString()) / 1e6);
+      const expires = p.sessionExpiry.toNumber();
+      const mine = p.sessionKey.equals(sessionKey.publicKey) && expires > Date.now() / 1000;
+      setSession(mine ? { expires, capUsd: Number(p.sessionSpendRemainingE6.toString()) / 1e6 } : null);
       setRawCards(p.cards.filter((k) => k.state !== CardState.Empty));
     }, 800);
     loop(async () => {
+      setSol((await c.base.getBalance(user, "confirmed")) / 1e9);
       const hs: Holding[] = [];
       for (const s of STOCKS) {
         const bal = await c.base.getTokenAccountBalance(getAssociatedTokenAddressSync(new PublicKey(dep.mints[s]), user), "confirmed").catch(() => null);
@@ -322,6 +328,13 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     [dep, base, c, signer, usdcMint],
   );
 
+  const endSession = useCallback(async () => {
+    await signAndSend(c.rollup, signer, new Transaction().add(await revokeSessionIx(rollup, user)), { skipPreflight: true });
+    setSession(null);
+    setSetup("needed");
+    setStep("session");
+  }, [c, rollup, signer, user]);
+
   // cost basis = average locked price of the claimed cards, so every device shows the same "since pulled"
   const priced = useMemo(
     () =>
@@ -352,9 +365,10 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
       faucet,
       sell,
       setup: { status: setup, step, error, run },
+      account: { address: user.toBase58(), sol, session, endSession },
       stats,
     }),
-    [usdc, prices, history, paused, degraded, cards, priced, buy, claimAll, faucet, sell, setup, step, error, run, stats],
+    [usdc, prices, history, paused, degraded, cards, priced, buy, claimAll, faucet, sell, setup, step, error, run, stats, user, sol, session, endSession],
   );
   return <GameCtx.Provider value={value}>{children}</GameCtx.Provider>;
 }
