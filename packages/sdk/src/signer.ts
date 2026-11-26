@@ -39,6 +39,8 @@ export async function signAndSend(
   tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
   const signed = await signer.signTransaction(tx);
   const sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: opts.skipPreflight ?? false });
-  await connection.confirmTransaction(sig, "confirmed");
+  // confirmation resolves for failed transactions too (the rollup records them even without preflight)
+  const { value } = await connection.confirmTransaction(sig, "confirmed");
+  if (value.err) throw new Error(`transaction ${sig} failed: ${JSON.stringify(value.err)}`);
   return sig;
 }
