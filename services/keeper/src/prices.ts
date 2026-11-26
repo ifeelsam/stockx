@@ -14,8 +14,8 @@ export interface PriceSource {
  * new (US market closed) the pusher re-publishes the last known price with a fresh timestamp instead of letting
  * the series pause. Feeds the source cannot serve at all are never held.
  */
-export function shouldHold(feed: string, lastPushAtMs: number | undefined, nowMs: number, unavailable: ReadonlySet<string>, everyMs = 30_000): boolean {
-  return !unavailable.has(feed) && nowMs - (lastPushAtMs ?? 0) >= everyMs;
+export function shouldHold(feed: string, lastPushAtMs: number | undefined, nowMs: number, unavailable: ReadonlySet<string>, forced: ReadonlySet<string> = new Set(), everyMs = 30_000): boolean {
+  return (forced.has(feed) || !unavailable.has(feed)) && nowMs - (lastPushAtMs ?? 0) >= everyMs;
 }
 
 /** Rescale a Pyth-style (price, conf, expo) to the feed's fixed exponent (default -8), flooring. */

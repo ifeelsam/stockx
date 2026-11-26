@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, type CSSProperties } from "react";
-import { SPLASH, SPLASH_MS, STOCK_LOOK, TIERS, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { holdingName, SPLASH, SPLASH_MS, STOCK_LOOK, TIERS, type Feed, type TierKey } from "@scratchers/ui-tokens";
 
 const at = (extra: CSSProperties = {}): CSSProperties => ({ position: "absolute", left: "50%", top: "42%", width: 0, height: 0, ...extra });
 const vars = (v: Record<string, string>) => v as CSSProperties;
@@ -65,7 +65,7 @@ export function RaritySplash({ rarity, feed, mult, usd, odds, onClose }: { rarit
           {rarity === "grail" ? "GRAIL" : TIERS[rarity].label}
         </span>
         <span className="splash-sub mt-3.5 text-[22px] font-extrabold">{STOCK_LOOK[feed].symbol} · {mult}</span>
-        <span className="splash-sub num mt-1 text-[13px] text-[#E4DFF0]">{usd} in {STOCK_LOOK[feed].company} shares</span>
+        <span className="splash-sub num mt-1 text-[13px] text-[#E4DFF0]">{usd} in {holdingName(feed)}</span>
         <span className="splash-sub num mt-1.5 text-[11px]" style={{ color: c }}>{odds}</span>
       </span>
       <span className="shim absolute inset-x-0 bottom-10 text-center text-[15px] font-bold">click to see your card</span>

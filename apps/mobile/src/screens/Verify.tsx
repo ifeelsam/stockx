@@ -44,7 +44,7 @@ export function Verify({ initial = "" }: { initial?: string }) {
         style={{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: "#3A3350", backgroundColor: colors.surface, color: colors.text, paddingHorizontal: 14, fontFamily: font.mono }} />
       {!local && (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {SERIES.filter((s) => !s.hidden).map((s) => (
+          {SERIES.map((s) => (
             <Pressable key={s.id} onPress={() => setSid(s.id)} style={{ minHeight: 40, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, justifyContent: "center", borderColor: s.id === sid ? colors.accent : "#3A3350" }}>
               <Text style={[ui.text, { fontSize: 13 }]}>{s.name}</Text>
             </Pressable>

@@ -79,4 +79,5 @@ test("hold-last-price applies only to feeds the source can serve, every 30 s", (
   assert.equal(shouldHold("mTSLA", 1_000_000 - 10_000, 1_000_000, none), false, "recent push");
   assert.equal(shouldHold("mTSLA", 1_000_000 - 30_000, 1_000_000, none), true);
   assert.equal(shouldHold("mNVDA", undefined, 1_000_000, new Set(["mNVDA"])), false, "not entitled: stays paused");
+  assert.equal(shouldHold("mNVDA", undefined, 1_000_000, new Set(["mNVDA"]), new Set(["mNVDA"])), true, "unless the operator asks to hold it");
 });

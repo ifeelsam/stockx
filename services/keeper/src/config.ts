@@ -25,6 +25,8 @@ export function loadConfig(env = process.env) {
     faucet: key(faucetPath, env.FAUCET_AUTHORITY_KEYPAIR_JSON),
     deployments: JSON.parse(readFileSync(env.DEPLOYMENTS ?? join(import.meta.dirname, "../../../deployments/devnet.json"), "utf8")) as Deployments,
     priceSource: (env.PRICE_SOURCE ?? "hermes") as "hermes" | "dev" | "pythpro",
+    /** Devnet only: feeds to keep fresh at their last on-chain price even when the source cannot serve them. */
+    holdFeeds: new Set((env.KEEPER_HOLD_FEEDS ?? "").split(",").map((f) => f.trim()).filter(Boolean)),
     pythProToken: env.PYTH_PRO_TOKEN,
     pythProUrl: env.PYTH_PRO_URL ?? "https://pyth.dourolabs.app",
     // Pyth Lazer ids (looked up 2026-11-24 via /v1/symbols): Equity.US.TSLA/USD, Equity.US.NVDA/USD, Crypto.SOL/USD

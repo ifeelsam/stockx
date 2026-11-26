@@ -79,3 +79,7 @@
 - The canvas added "02 · Rip & reveal (tear, deck, splash)" and a Rarity splashes row. Mobile now follows it: the strip peels as you drag, pulls arrive face up as a swipeable deck, "Skip Dust" jumps to the next non-Dust card. This supersedes PLAN's tap-to-flip on mobile. The desktop mockups did not change, so web keeps the flip grid.
 - Both apps play the splash for Uncommon and up; Dust and Common get none. The Grail splash is followed by the Grail screen (proof link). Demo packs say DEMO ODDS on the splash.
 - The ripstokx logo was added to the canvas (new `Brand` component, headers and card back).
+
+## 2026-11-26: NVDA and SOL packs are offered again; keeper can hold a feed it cannot source
+- Decision: series 12 (NVDA) and 13 (SOL) are visible in both apps, in the design's TSLA, NVDA, SOL order, plus the demo pack. Reverses the 2026-11-25 hiding at the owner's request. SOL is worded as SOL, not "shares".
+- Pricing: only SOL has a live source today. `KEEPER_HOLD_FEEDS=mTSLA,mNVDA` (off by default) makes the keeper keep those feeds fresh at their last on-chain price even when the source refuses them. Devnet only: the price can be far from the market, and NVDA's last value predates any confirmed real source. The keeper logs a warning when it is on.

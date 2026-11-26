@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { FINISH, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
+import { FINISH, STOCK_LOOK, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
 import { isPaused, useGame, VISIBLE_SERIES } from "@scratchers/app-core";
 import { multiplierOf, rtp, totalWeight, DEFAULT_TIERS } from "@scratchers/sdk";
 import { HoloCard } from "@/components/HoloCard";
@@ -24,7 +24,7 @@ export default function Packs() {
             <br />
             Pull real stock.
           </h1>
-          <p className="max-w-md text-lg text-[#C9C2E6]">Every card holds tokenized {cur.feed === "TSLA" ? "Tesla" : cur.feed} stock. Its rarity sets how much: from 20¢ of Dust up to a 1,000× Grail. Devnet demo, mock tokens only.</p>
+          <p className="max-w-md text-lg text-[#C9C2E6]">Every card holds {cur.feed === "SOL" ? "SOL" : `tokenized ${STOCK_LOOK[cur.feed].company} stock`}. Its rarity sets how much: from 20¢ of Dust up to a 1,000× Grail. Devnet demo, mock tokens only.</p>
           <div className="flex flex-wrap gap-2.5">
             {paused ? (
               <span className="flex min-h-14 items-center rounded-[14px] border border-dashed border-accent px-6 font-extrabold text-accent">Price paused · waiting for a fresh price</span>
@@ -39,9 +39,11 @@ export default function Packs() {
 
         <div className="flex min-w-0 flex-[1_1_480px] flex-col items-center gap-5 overflow-x-clip">
           {/* fixed-width row, scaled down on phones so both packs stay on screen */}
-          <div className="flex h-[300px] w-[470px] shrink-0 origin-bottom scale-[0.76] items-end justify-center sm:h-[390px] sm:scale-100">
-            {VISIBLE_SERIES.map((s, i) => {
-              const rel = i - picked;
+          <div className="flex h-[250px] w-[600px] shrink-0 origin-bottom scale-[0.62] items-end justify-center sm:h-[390px] sm:scale-100">
+            {/* previous, picked, next: the rest wait off stage */}
+            {[-1, 0, 1].map((rel) => {
+              const i = (picked + rel + VISIBLE_SERIES.length) % VISIBLE_SERIES.length;
+              const s = VISIBLE_SERIES[i];
               const on = rel === 0;
               return (
                 <button
@@ -49,8 +51,8 @@ export default function Packs() {
                   aria-pressed={on}
                   aria-label={`Choose the ${s.name}`}
                   onClick={() => setPicked(i)}
-                  className="-mx-2 origin-bottom transition-[transform,opacity] duration-300"
-                  style={{ transform: `translateY(${on ? 0 : 18}px) rotate(${rel * -6}deg) scale(${on ? 1.1 : 0.86})`, opacity: on ? 1 : 0.6, zIndex: on ? 2 : 1 }}
+                  className="-mx-[26px] origin-bottom transition-[transform,opacity] duration-300"
+                  style={{ transform: `translateY(${on ? 0 : 18}px) rotate(${rel * -6}deg) scale(${on ? 1.12 : 0.86})`, opacity: on ? 1 : 0.6, zIndex: on ? 2 : 1, margin: on ? "0 6px" : undefined }}
                 >
                   <div className={on ? "bob" : ""}>
                     <HoloPack feed={s.feed} demo={s.demo} paused={isPaused(g, s.feed)} offset={rel * 0.6} />

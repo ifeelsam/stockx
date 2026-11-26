@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "r
 import { Canvas, Group, Path, RadialGradient, Rect, SweepGradient, vec } from "@shopify/react-native-skia";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSpring, withTiming, ZoomIn, FadeInDown } from "react-native-reanimated";
 import Svg, { Path as SvgPath } from "react-native-svg";
-import { SPLASH, SPLASH_MS, STOCK_LOOK, TIERS, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { holdingName, SPLASH, SPLASH_MS, STOCK_LOOK, TIERS, type Feed, type TierKey } from "@scratchers/ui-tokens";
 import { font } from "../theme";
 
 /** 0 → 1 over `ms`, started after `delay`; repeats when `loop`. */
@@ -146,7 +146,7 @@ export function RaritySplash({ rarity, feed, mult, usd, odds, onClose }: { rarit
           </Animated.Text>
           <Animated.View entering={FadeInDown.delay(850)} style={{ alignItems: "center", gap: 5, marginTop: 8 }}>
             <Text style={{ fontFamily: font.heavy, fontSize: 22, color: "#F2EFFA" }}>{STOCK_LOOK[feed].symbol} · {mult}</Text>
-            <Text style={{ fontFamily: font.mono, fontSize: 13, color: "#E4DFF0" }}>{usd} in {STOCK_LOOK[feed].company} shares</Text>
+            <Text style={{ fontFamily: font.mono, fontSize: 13, color: "#E4DFF0" }}>{usd} in {holdingName(feed)}</Text>
             <Text style={{ fontFamily: font.mono, fontSize: 11, color: c }}>{odds}</Text>
           </Animated.View>
         </View>

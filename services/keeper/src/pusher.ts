@@ -9,7 +9,7 @@ export type FeedConf = { name: string; idHex: string };
 export const lastPush = new Map<string, { price: bigint; publishTs: number; at: number }>();
 
 /** Hermes (or dev) → push_price on the rollup. ~400 ms during US market hours, 5 s otherwise. */
-export function startPusher(o: { program: ScratchersProgram; rollup: Connection; keeper: Keypair; source: PriceSource; feeds: FeedConf[]; maxMoveBps?: number }) {
+export function startPusher(o: { program: ScratchersProgram; rollup: Connection; keeper: Keypair; source: PriceSource; feeds: FeedConf[]; maxMoveBps?: number; holdFeeds?: ReadonlySet<string> }) {
   const { program, rollup, keeper, source, feeds } = o;
   const maxMove = o.maxMoveBps ?? 500;
   const idByName = Object.fromEntries(feeds.map((f) => [f.name, f.idHex]));
@@ -36,7 +36,7 @@ export function startPusher(o: { program: ScratchersProgram; rollup: Connection;
       }
       // Source had nothing new for a feed (market closed): keep the last known price fresh instead of pausing.
       for (const f of feeds) {
-        if (!shouldHold(f.name, lastPush.get(f.name)?.at, Date.now(), source.unavailable?.() ?? new Set())) continue;
+        if (!shouldHold(f.name, lastPush.get(f.name)?.at, Date.now(), source.unavailable?.() ?? new Set(), o.holdFeeds)) continue;
         const id = Uint8Array.from(Buffer.from(f.idHex, "hex"));
         const prev = lastPush.get(f.name);
         const chain = prev ? { price: prev.price, ts: prev.publishTs } : await readOnChain(program, rollup, id);

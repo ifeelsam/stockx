@@ -222,6 +222,8 @@ export const serialOf = (id: number) => String(id).padStart(6, "0");
 export const oddsText = (weight: number, total: number) => (weight / total > 0.5 ? `~${Math.round((weight / total) * 100)}%` : `1 in ${Math.round(total / weight).toLocaleString("en-US")}`);
 
 export type Feed = keyof typeof STOCK_LOOK;
+/** What a pull is "in": SOL is a token, not a share. */
+export const holdingName = (feed: Feed) => (feed === "SOL" ? "SOL" : `${STOCK_LOOK[feed].company} shares`);
 export type CardFace = {
   feed: Feed;
   rarity: TierKey;
@@ -249,7 +251,7 @@ export function describeCard(
     rarity: t.key,
     mult,
     usd: cardUsd(usd),
-    shares: `${c.shares.toFixed(6)} shares`,
+    shares: `${c.shares.toFixed(6)} ${s.feed === "SOL" ? "SOL" : "shares"}`,
     now: `now ${money(value)} ${value >= c.shares * c.lockedPrice ? "\u25b2" : "\u25bc"}`,
     serial: serialOf(c.id),
     tilt: c.seed ? c.seed[24] / 255 : 0.35,

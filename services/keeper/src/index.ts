@@ -28,7 +28,8 @@ const program = getProgram(c.base);
 const feeds = Object.entries(cfg.deployments.feeds).map(([name, f]) => ({ name, idHex: f.id }));
 const stales = new Map<string, number>(); // feed → age in seconds (watcher)
 
-startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: priceSource(cfg) });
+if (cfg.holdFeeds.size) log("warn", "holding last price for feeds even without source data: their price may be far from the market", { feeds: [...cfg.holdFeeds] });
+startPusher({ program, rollup: c.rollup, keeper: cfg.keeper, feeds, source: priceSource(cfg), holdFeeds: cfg.holdFeeds });
 startRepair({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments, graceMs: cfg.repairGraceMs });
 startInventory({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, mintAuthority: cfg.faucet, deployments: cfg.deployments, refill: cfg.refillStock });
 startQuotes({ program, base: c.base, rollup: c.rollup, keeper: cfg.keeper, deployments: cfg.deployments });
