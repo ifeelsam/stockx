@@ -8,6 +8,7 @@ export * from "./price.js";
 export * from "./program.js";
 export * from "./instructions.js";
 export * from "./accounts.js";
+export * from "./history.js";
 export * from "./sell.js";
 export * from "./status.js";
 export type { Scratchers } from "./generated/scratchers.js";

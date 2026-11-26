@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { statsPda, sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
+import { statsPda, sell, sellToVaultIx, setSellQuoteIx, ackSoldIx, initSellQuoteIx, usdcForSale, paymentsSwapTx, sellQuotePda, depositUsdcIx, withdrawUsdcIx, treasuryUsdc, claimAllIx, escrowPda, magicFeeVaultPda, markSettledIx, payOutIx, payoutPda, topUpActionEscrowIx, buyCardIx, createSeriesIx, DEFAULT_TIERS, delegatePlayerIx, getProgram, programEvents, PROGRAM_ID, playerPda, rtp, sharesFor, signupIx, tierFor, totalWeight, vaultPda, VRF_EPHEMERAL_QUEUE } from "./index.js";
 
 const program = getProgram(new Connection("http://127.0.0.1:8899"));
 const seedWith = (r: bigint) => {
@@ -220,4 +220,12 @@ test("patchBuffer reaches other Buffer copies (anything extending Uint8Array)", 
   const o = new Other(8) as unknown as { writeBigUInt64LE(v: bigint, off: number): number; readBigUInt64LE(off: number): bigint };
   o.writeBigUInt64LE(1234567890123n, 0);
   assert.equal(o.readBigUInt64LE(0), 1234567890123n);
+});
+
+test("card history reads only events our program logged", () => {
+  // a real devnet VrfCallback log line (CardRevealed)
+  const data = "Program data: /FCT8IGR59BsaJfMsjfyj2buAjrqfcMy9WQ66CIuHwe53Kdt4FMbtBcAAAAAAAAAARAnAAAxCgAAAAAAAOYcOHNGxdKavZ5dsejq1sQm3Q5UdnqKIyTW1NeYR6kQ";
+  const run = (id: string) => [`Program Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz invoke [1]`, `Program ${id} invoke [2]`, "Program log: Instruction: VrfCallback", data, `Program ${id} success`];
+  assert.deepEqual(programEvents(program, run(PROGRAM_ID.toBase58())).map((e) => e.name), ["cardRevealed"]);
+  assert.deepEqual(programEvents(program, run("Memo1111111111111111111111111111111111111")), [], "a look-alike line from another program is ignored");
 });

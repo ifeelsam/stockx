@@ -17,8 +17,6 @@ export default function Binder() {
   const total = g.holdings.reduce((a, h) => a + h.shares * g.prices[h.feed], 0);
   const cost = g.holdings.reduce((a, h) => a + h.costUsd, 0);
 
-  // ponytail: history = the card slots still on the Player account (32, reused by later buys).
-  // A full binder needs an indexer over CardRevealed events.
   const mine = g.cards.filter((c): c is Shown => !!c.art && (c.flipped || c.state === "settled"));
   const slotsFor = (feed: Feed) => {
     const best = new Map<TierKey, Shown[]>();

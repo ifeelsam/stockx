@@ -93,3 +93,7 @@
 
 ## 2026-11-26: NVDA is priced by hand at the last session's typical price
 - Decision (owner): keep the NVDA pack and price it at the day's average. The Pyth token has no NVDA feed and 2026-11-26 is a US market holiday, so the value is the 2026-11-25 typical price (high 150.37 + low 141.17 + close 149.30) / 3 = **$146.95**, from public web quotes (not a VWAP). Set with `set-price mNVDA 146.95` and held by the keeper (`KEEPER_HOLD_FEEDS`), which now re-publishes the on-chain value. Devnet only; it does not update itself.
+
+## 2026-11-26: The binder is rebuilt from rollup logs
+- The program fills the first free card slot, settled ones included, so each new pack overwrote the previous one while 22 slots stayed empty. The apps now rebuild past cards from `CardBought`/`CardRevealed` logs on the rollup (`fetchCardHistory`) and keep what they see during the session. No program change.
+- Limit: up to 1,000 transactions (about 300 cards) and only as far back as the rollup keeps them. A server-side index is the durable answer.

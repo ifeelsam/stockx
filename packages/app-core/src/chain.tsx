@@ -10,9 +10,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { PublicKey, Transaction } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
-  buyCardIx, CardState, claimAllIx, waitForRollupUsdc, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
+  buyCardIx, CardState, claimAllIx, fetchCardHistory, waitForRollupUsdc, connect, createSessionIx, createStockAtaIx, delegatePlayerIx, depositToRollupIxs, depositUsdcIx,
   ACTION_ESCROW_LAMPORTS, PLAYER_RESERVE_LOW_LAMPORTS, topUpPlayerReserveIx, fetchDegraded, fetchPlayer, fetchStats, getProgram, maxPriceE8, playerPda, sell as sdkSell, signAndSend, signupIx, topUpActionEscrowIx,
-  type Signer, type SessionKeySigner,
+  type PastCard, type Signer, type SessionKeySigner,
 } from "@scratchers/sdk";
 import { cardArt } from "@scratchers/sdk/pure";
 import { GameCtx, type Game, type Holding, type Prices, type UiCard } from "./game.js";
@@ -48,6 +48,7 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
   const [degraded, setDegraded] = useState<string[]>([]);
   const [usdc, setUsdc] = useState(0);
   const [rawCards, setRawCards] = useState<Awaited<ReturnType<typeof fetchPlayer>>["cards"]>([]);
+  const [past, setPast] = useState<ReadonlyMap<number, PastCard>>(new Map()); // cards whose slot may be reused
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [stats, setStats] = useState<Game["stats"]>({ sold: 0, tierCounts: Array(8).fill(0), paidShares: 0 });
@@ -119,10 +120,28 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
     };
   }, [c, base, rollup, dep, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- collection: older packs from the logs, plus everything seen in this session ---------------------
+  const remember = useCallback((list: PastCard[]) => {
+    setPast((prev) => {
+      const add = list.filter((k) => !prev.has(k.id));
+      return add.length ? new Map([...prev, ...add.map((k) => [k.id, k] as const)]) : prev;
+    });
+  }, []);
+  useEffect(() => {
+    setPast(new Map());
+    fetchCardHistory(rollup, c.rollup, user).then(remember, (e) => console.warn("card history unavailable", e));
+  }, [c, rollup, user, remember]);
+  useEffect(() => {
+    const done: number[] = [CardState.Revealed, CardState.ClaimRequested, CardState.Settled];
+    remember(rawCards.filter((k) => done.includes(k.state)).map((k) => ({ id: Number(k.id.toString()), series: k.series, lockedPrice: BigInt(k.lockedPrice.toString()), shares: BigInt(k.shares.toString()), seed: Uint8Array.from(k.seed) })));
+  }, [rawCards, remember]);
+
   // ---- cards: map chain state to UI state ---------------------------------------------------------
-  const cards = useMemo<UiCard[]>(
-    () =>
-      rawCards
+  const cards = useMemo<UiCard[]>(() => {
+    const inSlots = new Set(rawCards.map((k) => Number(k.id.toString())));
+    const older = [...past.values()].filter((k) => !inSlots.has(k.id)).map((k) => ({ ...k, state: CardState.Settled as number }));
+    return [...older, ...rawCards]
+      .sort((a, b) => Number(a.id.toString()) - Number(b.id.toString()))
         // Settled slots stay visible (binder, proof) until a later buy reuses them.
         .filter((k) => k.state !== CardState.Cancelled)
         // cards of retired series (1-4) cannot be claimed: never show them under another series' table
@@ -141,11 +160,10 @@ export function ChainGameProvider({ deps, children }: { deps: ChainDeps; childre
             art: seed ? cardArt(seed, s.tiers) : undefined,
             lockedPrice: Number(k.lockedPrice.toString()) / 1e8,
             shares: revealed ? Number(k.shares.toString()) / 1e6 : 0,
-            flipped: settled || flipped.has(id),
+            flipped: settled || k.state === CardState.ClaimRequested || flipped.has(id),
           } satisfies UiCard;
-        }),
-    [rawCards, flipped, dep],
-  );
+        });
+  }, [rawCards, past, flipped, dep]);
 
   // ---- onboarding -------------------------------------------------------------------------------------
   /** `minCapE6`: spend allowance the session must still have (default: one full pack). */
