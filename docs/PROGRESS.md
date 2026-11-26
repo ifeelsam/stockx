@@ -2,6 +2,13 @@
 
 **Submission deadline: owner says not to worry about it (2026-11-24); keep building, no code-freeze planning.**
 
+## 2026-11-26: phone on the real rollup
+
+- The phone was on `EXPO_PUBLIC_BACKEND=mock`; on `chain` it also showed $0 because Hermes returns a bare `Uint8Array` from `Buffer.subarray`, so every account and event decode threw (fixed in `patchBuffer`).
+- Mobile now defaults to `chain`, bundles `deployments/devnet.json`, and never substitutes the simulation for a connected wallet.
+- Checked on the emulator (release APK, read-only): rollup balance, wallet shares and binder match the chain.
+- Not yet run on the phone: set up, buy, claim, sell. Faucet from a release build needs an HTTPS keeper. One session key per player, so setting up on the phone ends the web session and the reverse.
+
 ## 2026-11-26: MagicBlock conformance on devnet
 
 `pnpm --filter @scratchers/scripts conformance:devnet` passes 33/33 against series 13 (SOL): delegation and router status, eSPL deposit/top-up/withdraw, session key and cap refusals, price refusals, VRF reveals, a deliberately dropped Magic Action repaired exactly once, 40 commits in one delegation, undelegate and re-delegate. MagicSVM 22/22.
