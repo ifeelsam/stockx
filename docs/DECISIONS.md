@@ -74,3 +74,8 @@
 - Routes stay `/play`, `/portfolio`, `/verify`; the nav labels them Packs, Binder, Proof. Odds and Stats are footer links.
 - The binder's rarity slots come from the Player account's 32 card slots (settled cards stay until a later buy reuses them). A full history needs an event indexer.
 - Pack art shows the ticker as text, no company logos.
+
+## 2026-11-26: Newer canvas replaces per-card tapping on mobile; rarity splashes on both apps
+- The canvas added "02 · Rip & reveal (tear, deck, splash)" and a Rarity splashes row. Mobile now follows it: the strip peels as you drag, pulls arrive face up as a swipeable deck, "Skip Dust" jumps to the next non-Dust card. This supersedes PLAN's tap-to-flip on mobile. The desktop mockups did not change, so web keeps the flip grid.
+- Both apps play the splash for Uncommon and up; Dust and Common get none. The Grail splash is followed by the Grail screen (proof link). Demo packs say DEMO ODDS on the splash.
+- The ripstokx logo was added to the canvas (new `Brand` component, headers and card back).
