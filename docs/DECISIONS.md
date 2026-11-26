@@ -83,3 +83,10 @@
 ## 2026-11-26: NVDA and SOL packs are offered again; keeper can hold a feed it cannot source
 - Decision: series 12 (NVDA) and 13 (SOL) are visible in both apps, in the design's TSLA, NVDA, SOL order, plus the demo pack. Reverses the 2026-11-25 hiding at the owner's request. SOL is worded as SOL, not "shares".
 - Pricing: only SOL has a live source today. `KEEPER_HOLD_FEEDS=mTSLA,mNVDA` (off by default) makes the keeper keep those feeds fresh at their last on-chain price even when the source refuses them. Devnet only: the price can be far from the market, and NVDA's last value predates any confirmed real source. The keeper logs a warning when it is on.
+
+## 2026-11-26: MagicBlock conformance run on devnet: what it changed
+- **Deposits use two eSPL builders.** The legacy `delegateSpl` (`idempotent: false`) rejects an already-delegated balance, so every top-up failed. The shuttle builder, used for a first deposit, can merge before the rollup ATA exists and strand the amount (seen live). SDK picks by whether the eATA is delegated, then waits for the amount (not the account) before `deposit_usdc`.
+- **Withdrawals use the shuttle builder** (the legacy `withdrawSpl` needs the eATA undelegated first).
+- **Commit-fee reserve is topped up from the client** with `lamportsDelegatedTransferIx` when under 0.003 SOL. The 0.01 SOL from `signup` covers about 35 commits per delegation. No program change.
+- **Keeper payout repair judges claims by the rollup copy.** Judging by the committed base snapshot dropped a player whose commit had not landed yet, so dropped Magic Actions were never repaired.
+- **Not done:** `VaultState` is not committed periodically and has no delegated payer + `magic_fee_vault` (CLAUDE.md §3); it only commits on admin undelegate. Onboarding asks the wallet for four signatures, not at most two (§6). Apps use the fixed asia rollup rather than the router (the router agrees for every delegated account).

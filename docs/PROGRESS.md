@@ -2,6 +2,15 @@
 
 **Submission deadline: owner says not to worry about it (2026-11-24); keep building, no code-freeze planning.**
 
+## 2026-11-26: MagicBlock conformance on devnet
+
+`pnpm --filter @scratchers/scripts conformance:devnet` passes 33/33 against series 13 (SOL): delegation and router status, eSPL deposit/top-up/withdraw, session key and cap refusals, price refusals, VRF reveals, a deliberately dropped Magic Action repaired exactly once, 40 commits in one delegation, undelegate and re-delegate. MagicSVM 22/22.
+
+- Fixed: dropped payouts never repaired; second deposit failing; commits failing after about 35 claims; withdraw failing; failed rollup transactions reported as success; used-up session leaving the player stuck.
+- **Restart the keeper** to run the repair fix.
+- Not covered live: `cancel_pending` after timeout (VRF answers in under a second; MagicSVM covers it), MagicBlock oracle price path, the apps' React flow with a real login.
+- Open against CLAUDE.md: see DECISIONS.md, same date.
+
 ## 2026-11-26: PLAN.md rarity + holo-pack refactor (current state)
 
 **Done and green**
