@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { Connection, Keypair, SystemProgram, Transaction } from "@solana/web3.js";
-import { connect, SessionKeySigner } from "@scratchers/sdk";
-import { colors } from "@scratchers/ui-tokens";
+import { connect, DEFAULT_TIERS, multiplierOf, SessionKeySigner, totalWeight } from "@scratchers/sdk";
+import { cardUsd, colors, oddsText, SPLASH, TIERS, TIER_KEYS, type TierKey } from "@scratchers/ui-tokens";
+import { RaritySplash } from "../components/RaritySplash";
 import { env } from "../env";
 import { ui } from "../theme";
 import { useWallet } from "../lib/wallets";
@@ -29,6 +30,8 @@ const selfTransfer = async (conn: Connection, who: import("@scratchers/sdk").Sig
 /** Day-1 risk test: both wallets sign, a session key signs and reaches the rollup endpoint. */
 export function Dev() {
   const w = useWallet();
+  const [splash, setSplash] = useState<TierKey | null>(null);
+  const closeSplash = useCallback(() => setSplash(null), []);
   const [log, setLog] = useState<string[]>([]);
   const add = (s: string) => setLog((l) => [`${new Date().toLocaleTimeString()} ${s}`, ...l].slice(0, 30));
   const run = (label: string, f: () => Promise<string>) => async () => {
@@ -61,6 +64,20 @@ export function Dev() {
       <Text style={ui.dim}>wallet: {w.kind} {w.address ?? ""} · seeker wallet: {w.availability}</Text>
       <Pressable onPress={signWith} style={[ui.btn, { backgroundColor: colors.money }]}><Text style={ui.btnText}>Sign tx with active wallet</Text></Pressable>
       <Pressable onPress={sessionToRollup} style={[ui.btn, { backgroundColor: colors.gold }]}><Text style={ui.btnText}>Session key → rollup tx</Text></Pressable>
+      <Text style={[ui.h2, { marginTop: 10 }]}>Rarity splashes</Text>
+      <Text style={ui.dim}>Preview only: nothing is bought or drawn.</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        {TIER_KEYS.filter((k) => SPLASH[k]).map((k) => (
+          <Pressable key={k} onPress={() => setSplash(k)} accessibilityLabel={`Preview ${TIERS[k].label} splash`} style={[ui.btn, { borderWidth: 1, borderColor: TIERS[k].color }]}>
+            <Text style={[ui.ghostText, { color: TIERS[k].color }]}>{TIERS[k].label}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {splash && (() => {
+        const i = TIER_KEYS.indexOf(splash);
+        const m = multiplierOf(DEFAULT_TIERS[i]);
+        return <RaritySplash rarity={splash} feed="TSLA" mult={`${m.toLocaleString("en-US")}×`} usd={cardUsd(m)} odds={oddsText(DEFAULT_TIERS[i].weight, totalWeight(DEFAULT_TIERS))} onClose={closeSplash} />;
+      })()}
       <View style={ui.card}>{log.length === 0 ? <Text style={ui.dim}>no events yet</Text> : log.map((l, i) => <Text key={i} style={[ui.dim, { fontSize: 12 }]}>{l}</Text>)}</View>
     </ScrollView>
   );

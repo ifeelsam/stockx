@@ -93,9 +93,15 @@ export function RaritySplash({ rarity, feed, mult, usd, odds, onClose }: { rarit
       <Pressable style={{ flex: 1, backgroundColor: R.bg, overflow: "hidden" }} onPress={onClose} accessibilityLabel={`${TIERS[rarity].label} pull. Tap to see your card`}>
         <Canvas style={StyleSheet.absoluteFill}>
           {R.prism && (
-            <Rect x={0} y={0} width={w} height={h} opacity={0.55}>
-              <SweepGradient c={vec(cx, cy)} colors={["#FF5C8A", "#FFB86B", "#FEFF9C", "#7AFCFF", "#B28DFF", "#FF5C8A"]} />
-            </Rect>
+            <Group>
+              <Rect x={0} y={0} width={w} height={h} opacity={0.55}>
+                <SweepGradient c={vec(cx, cy)} colors={["#FF5C8A", "#FFB86B", "#FEFF9C", "#7AFCFF", "#B28DFF", "#FF5C8A"]} />
+              </Rect>
+              {/* dark edge so the prism reads as a burst, not a flat wash */}
+              <Rect x={0} y={0} width={w} height={h}>
+                <RadialGradient c={vec(cx, cy)} r={h * 0.62} colors={["rgba(13,11,20,0)", "rgba(13,11,20,0.35)", "rgba(13,11,20,0.9)"]} positions={[0, 0.45, 0.9]} />
+              </Rect>
+            </Group>
           )}
           <Group>
             <Rect x={0} y={0} width={w} height={h}>
