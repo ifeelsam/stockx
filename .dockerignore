@@ -10,3 +10,4 @@ tests/magicsvm/target
 .git
 **/.env*
 **/*.keystore
+bugreport-*.zip

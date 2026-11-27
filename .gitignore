@@ -23,3 +23,5 @@ target/deploy/*.json
 .DS_Store
 graphify-out/
 *.tsbuildinfo
+# adb bug reports hold device logs
+bugreport-*.zip
