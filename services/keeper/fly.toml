@@ -1,11 +1,11 @@
 # Deploy from the repo root. --ha=false matters: two keepers fight over prices.
-#   fly deploy . -c services/keeper/fly.toml --dockerfile services/keeper/Dockerfile --ha=false
+#   fly deploy . -c services/keeper/fly.toml --dockerfile Dockerfile.keeper --ha=false
 # Secrets, set once with `fly secrets set`: KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, PYTH_PRO_TOKEN
 app = "stock-scratchers-keeper"
 primary_region = "sin"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "../../Dockerfile.keeper"
 
 [env]
   PORT = "8787"

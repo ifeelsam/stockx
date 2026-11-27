@@ -17,8 +17,11 @@ const key = (path: string, inlineJson?: string) => (inlineJson ? fromBytes(inlin
 export function loadConfig(env = process.env) {
   const dir = join(homedir(), ".config", "stockx");
   const faucetPath = env.FAUCET_AUTHORITY_KEYPAIR_PATH ?? join(dir, "deployer.json"); // also mint authority
+  // --web is the Vercel service: HTTP only, on the port Vercel routes to by default.
+  const web = process.argv.includes("--web");
   return {
-    port: Number(env.PORT ?? 8787),
+    web,
+    port: Number(env.PORT ?? (web ? 80 : 8787)),
     rpcUrl: env.RPC_URL,
     region: (env.REGION as "asia" | "eu" | "us" | undefined) ?? "asia",
     keeper: key(env.KEEPER_KEYPAIR_PATH ?? join(dir, "keeper.json"), env.KEEPER_KEYPAIR_JSON),

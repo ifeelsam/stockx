@@ -6,7 +6,8 @@ import { ChainGameProvider, GameProvider, type Deployments } from "@scratchers/a
 import { usePrivySigner } from "@/lib/privySigner";
 
 const chainMode = process.env.NEXT_PUBLIC_BACKEND === "chain";
-const KEEPER = process.env.NEXT_PUBLIC_KEEPER_URL ?? "http://localhost:8787";
+// A deployed build calls the keeper on its own domain (the /keeper rewrite in vercel.json).
+const KEEPER = process.env.NEXT_PUBLIC_KEEPER_URL ?? (process.env.NODE_ENV === "production" ? "/keeper" : "http://localhost:8787");
 
 /** Session key lives in sessionStorage: survives reloads, dies with the tab (plan says in-memory; this avoids a wallet popup per reload). */
 function useSessionKey(): SessionKeySigner | null {

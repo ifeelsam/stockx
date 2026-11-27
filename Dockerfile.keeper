@@ -1,4 +1,5 @@
-# Build from the repo root:  docker build -f services/keeper/Dockerfile -t scratchers-keeper .
+# Keeper image, used by Vercel (vercel.json) and Fly (services/keeper/fly.toml). The build context is the repo root:
+#   docker build -f Dockerfile.keeper -t scratchers-keeper .
 FROM node:22-slim
 RUN corepack enable
 WORKDIR /repo
@@ -6,7 +7,9 @@ WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile --filter @scratchers/keeper...
 RUN pnpm --filter @scratchers/sdk build
-ENV PORT=8787 DEPLOYMENTS=/repo/deployments/devnet.json
+ENV DEPLOYMENTS=/repo/deployments/devnet.json
 EXPOSE 8787
+WORKDIR /repo/services/keeper
 # Secrets via env (never baked in): KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, PYTH_PRO_TOKEN
-CMD ["pnpm", "--filter", "@scratchers/keeper", "start"]
+# node directly: no package manager download at start-up, and signals reach the process.
+CMD ["node", "--import", "tsx", "src/index.ts"]

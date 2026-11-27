@@ -111,3 +111,11 @@
 - Decision (owner): the three packs look like the owner's reference renders. The art is cut from those images (`packages/ui-tokens/art/`) and shared by web and mobile; the card count, demo-odds label and paused band are still drawn by the apps, and the printed Grail line is covered on the demo pack.
 - Supersedes "pack art shows the ticker as text, no company logos" (2026-11-25). Tesla, Nvidia and Solana names and logos are trademarks and no permission was obtained; replace the art before any public or commercial use beyond this devnet demo.
 - The "Solana · 24/7" wording is gone with the old drawn pack.
+
+## 2026-11-27: Vercel deploy as two services and one daemon
+- `vercel.json` (repo root): `web` (Next.js, public at `/`), `keeper` (container, HTTP only, public at `/keeper/*`), and the `keeper-worker` daemon (same image: price relay, payout repair, inventory, sell quotes). No bindings: only the browser and the phone call the keeper.
+- The loops cannot live in a service: container services scale down after 5 minutes without traffic and may run several instances. Daemons stay up but take no inbound traffic and run for production only. Services and Daemons are both in beta.
+- The Dockerfile moved to `Dockerfile.keeper` at the root so the build context is the whole workspace. `--web` starts the HTTP side only. Fly config still works.
+- Project env: `NEXT_PUBLIC_PRIVY_APP_ID`, `NEXT_PUBLIC_BACKEND=chain`, `KEEPER_KEYPAIR_JSON`, `FAUCET_AUTHORITY_KEYPAIR_JSON`, `PYTH_PRO_TOKEN`, `PRICE_SOURCE=pythpro`, `KEEPER_HOLD_FEEDS=mTSLA,mNVDA`, `REFILL_STOCK=1`. Leave `PORT` and `NEXT_PUBLIC_KEEPER_URL` unset. Mobile builds use `EXPO_PUBLIC_KEEPER_URL=https://<domain>/keeper`.
+- Limits: faucet throttles are in memory, so on Vercel they are per instance and reset on scale-down (the 1 SOL floor still applies). Env vars are project-wide, so the web service also receives the keeper keys. Run one keeper only: stop local and Fly keepers.
+- Hobby daemons get 420 GB-hours a month, about 17 days of one 1 GiB instance.

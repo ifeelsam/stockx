@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CardState } from "@scratchers/sdk";
-import { Cooldown, DripBudget } from "./ratelimit.js";
+import { clientIp, Cooldown, DripBudget, routePath } from "./ratelimit.js";
 import { isUsMarketOpen, planWalk, toFeedUnits } from "./prices.js";
 import { planRepairs, type CardLite } from "./repair.js";
 
@@ -91,4 +91,14 @@ test("hold-last-price applies only to feeds the source can serve, every 30 s", (
   assert.equal(shouldHold("mTSLA", 1_000_000 - 30_000, 1_000_000, none), true);
   assert.equal(shouldHold("mNVDA", undefined, 1_000_000, new Set(["mNVDA"])), false, "not entitled: stays paused");
   assert.equal(shouldHold("mNVDA", undefined, 1_000_000, new Set(["mNVDA"]), new Set(["mNVDA"])), true, "unless the operator asks to hold it");
+});
+
+test("the /keeper mount is stripped, and only the platform's own header names the caller", () => {
+  assert.equal(routePath("/keeper/faucet"), "/faucet");
+  assert.equal(routePath("/faucet"), "/faucet");
+  assert.equal(routePath("/keeperx/faucet"), "/keeperx/faucet");
+  const headers = { "x-real-ip": "1.1.1.1", "fly-client-ip": "2.2.2.2", "x-forwarded-for": "3.3.3.3" };
+  assert.equal(clientIp(headers, true, "9.9.9.9"), "1.1.1.1");
+  assert.equal(clientIp(headers, false, "9.9.9.9"), "2.2.2.2");
+  assert.equal(clientIp({ "x-forwarded-for": "3.3.3.3" }, true, "9.9.9.9"), "9.9.9.9");
 });

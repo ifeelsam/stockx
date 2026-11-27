@@ -27,3 +27,13 @@ export class DripBudget {
     return true;
   }
 }
+
+/** Public path → route. On Vercel the service is mounted under /keeper and receives the full path. */
+export const routePath = (url = "") => url.replace(/^\/keeper(?=\/)/, "");
+
+/**
+ * The caller's address, taken only from the header the platform in front of us overwrites: x-real-ip on Vercel,
+ * fly-client-ip on Fly. Any other header is the caller's own text and would dodge the per-IP throttle.
+ */
+export const clientIp = (headers: Record<string, string | string[] | undefined>, vercel: boolean, remote?: string) =>
+  String(headers[vercel ? "x-real-ip" : "fly-client-ip"] ?? remote);
