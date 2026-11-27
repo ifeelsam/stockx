@@ -14,6 +14,11 @@ export const viewport: Viewport = { themeColor: "#0D0B14" };
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* a CSS @import of this URL is dropped from the build, which left every page on system fonts */}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Space+Mono:wght@400;700&display=swap" />
+      </head>
       <body className="min-h-dvh">
         <Providers>
           <Nav />
