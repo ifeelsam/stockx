@@ -24,3 +24,6 @@ export function planRepairs(cards: CardLite[], firstSeenMs: Map<bigint, number>,
   }
   return out;
 }
+
+/** Wait after the n-th failed repair of one card: 10 s doubling to 10 min. A payout that can never land must not be retried every sweep. */
+export const retryDelayMs = (fails: number) => Math.min(5000 * 2 ** fails, 600_000);

@@ -3,7 +3,7 @@ import { PublicKey, type Connection, type Keypair } from "@solana/web3.js";
 import { CardState, markSettledIx, payOutIx, payoutPda, PROGRAM_ID, type ScratchersProgram } from "@scratchers/sdk";
 import type { Deployments } from "./config.js";
 import { log } from "./log.js";
-import { planRepairs, type CardLite } from "./repair.js";
+import { planRepairs, retryDelayMs, type CardLite } from "./repair.js";
 import { sendIx } from "./tx.js";
 
 /**
@@ -15,6 +15,7 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
   const { program, base, rollup, keeper, deployments, graceMs } = o;
   const watched = new Set<string>(); // Player PDAs with unsettled claims
   const firstSeen = new Map<string, Map<bigint, number>>();
+  const failed = new Map<string, { fails: number; retryAt: number }>(); // "player:card"
   const mintBySeries = new Map(deployments.series.map((s) => [s.id, new PublicKey(deployments.mints[s.stock])]));
   const parser = new EventParser(PROGRAM_ID, program.coder);
 
@@ -50,6 +51,8 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
         const seen = firstSeen.get(key) ?? new Map<bigint, number>();
         firstSeen.set(key, seen);
         for (const a of planRepairs(lite, seen, Date.now(), graceMs)) {
+          const id = `${key}:${a.cardId}:${a.kind}`;
+          if (Date.now() < (failed.get(id)?.retryAt ?? 0)) continue;
           try {
             if (a.kind === "pay_out") {
               const mint = mintBySeries.get(a.seriesId)!;
@@ -62,7 +65,9 @@ export function startRepair(o: { program: ScratchersProgram; base: Connection; r
           } catch (e) {
             // 0x177f = BadState on mark_settled: someone else (a client) settled the card first
             if (a.kind === "mark_settled" && /0x177f/.test((e as Error).message)) continue;
-            log("error", "repair failed", { player: key, card: a.cardId.toString(), err: (e as Error).message });
+            const fails = (failed.get(id)?.fails ?? 0) + 1;
+            failed.set(id, { fails, retryAt: Date.now() + retryDelayMs(fails) });
+            log("error", "repair failed", { player: key, card: a.cardId.toString(), fails, retryInS: retryDelayMs(fails) / 1000, err: (e as Error).message });
           }
         }
       } catch (e) {

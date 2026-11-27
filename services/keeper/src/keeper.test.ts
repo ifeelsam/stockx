@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { CardState } from "@scratchers/sdk";
 import { clientIp, Cooldown, DripBudget, routePath } from "./ratelimit.js";
 import { isUsMarketOpen, planWalk, toFeedUnits } from "./prices.js";
-import { planRepairs, type CardLite } from "./repair.js";
+import { planRepairs, retryDelayMs, type CardLite } from "./repair.js";
 
 test("toFeedUnits rescales to the feed exponent and floors", () => {
   assert.deepEqual(toFeedUnits("25012345678", "12345", -8), { price: 25012345678n, conf: 12345n });
@@ -101,4 +101,8 @@ test("the /keeper mount is stripped, and only the platform's own header names th
   assert.equal(clientIp(headers, true, "9.9.9.9"), "1.1.1.1");
   assert.equal(clientIp(headers, false, "9.9.9.9"), "2.2.2.2");
   assert.equal(clientIp({ "x-forwarded-for": "3.3.3.3" }, true, "9.9.9.9"), "9.9.9.9");
+});
+
+test("a failing repair backs off to one try per ten minutes", () => {
+  assert.deepEqual([1, 2, 3, 7, 100].map(retryDelayMs), [10_000, 20_000, 40_000, 600_000, 600_000]);
 });
