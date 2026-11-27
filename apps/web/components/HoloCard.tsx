@@ -1,9 +1,10 @@
 import { useId, type CSSProperties } from "react";
-import { CARD_ART as A, FINISH, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { CARD_ART as A, CARD_BACK as B, FINISH, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
 import { Scaled } from "./Scaled";
 import { LogoMark, Wordmark } from "./Logo";
 
 export type { CardFace, Feed };
+
 
 /** The brand mark as a glossy raised badge; `flat` is the faint one behind it. */
 function BrandMark({ feed, size, flat, style }: { feed: Feed; size: number; flat?: boolean; style: CSSProperties }) {
@@ -45,22 +46,49 @@ const Gem = ({ fill, size = 14 }: { fill: string; size?: number }) => (
 );
 export { Gem };
 
-/** Face-down card. `tease` glows in the rarity colour; Dust never glows (a glow always means a real pull). */
+/**
+ * Face-down card: the same foil as the faces, in the house colours, so it gives nothing away.
+ * `tease` lights it in the rarity colour; Dust never glows (a glow always means a real pull).
+ */
 export function CardBack({ rarity = "dust", tease = false, width = 286 }: { rarity?: TierKey; tease?: boolean; width?: number }) {
   const glow = tease && rarity !== "dust";
+  const edge = glow ? FINISH[rarity].edge : B.edge;
+  const ring = glow ? [...FINISH[rarity].edge, FINISH[rarity].edge[0]] : B.ring;
+  const light = glow ? TIERS[rarity].color : B.light;
+  const at = `${A.cx}px ${B.cy}px`;
+  const streaks = A.streaks.map(([p, tone, a]) => `${tone === "white" ? "#ffffff" : light}${a} ${p * 100}%`).join(", ");
   return (
-    <Scaled w={286} h={408} width={width}>
-      <div className="relative h-[408px] w-[286px] rounded-[18px] p-[9px] shadow-[0_30px_60px_-24px_rgba(0,0,0,0.85)]" style={{ background: glow ? FINISH[rarity].frame : "#24202F" }}>
-        <div
-          className={`relative flex h-full flex-col items-center justify-center gap-3.5 rounded-xl ${glow ? "tease" : ""}`}
-          style={{
-            ["--rc" as string]: TIERS[rarity].color,
-            backgroundColor: "#2B1B5C",
-            backgroundImage: "repeating-linear-gradient(45deg, rgba(157,243,255,0.10) 0 2px, transparent 2px 22px), repeating-linear-gradient(-45deg, rgba(157,243,255,0.10) 0 2px, transparent 2px 22px)",
-          }}
-        >
-          <LogoMark size={108} />
-          <Wordmark className="text-[30px]" />
+    <Scaled w={A.w} h={A.h} width={width}>
+      <div
+        className={`relative h-[408px] w-[286px] rounded-[18px] p-2 shadow-[0_30px_60px_-24px_rgba(0,0,0,0.85)] ${glow ? "tease" : ""}`}
+        style={{ ["--rc" as string]: TIERS[rarity].color, background: `linear-gradient(135deg, ${edge.join(", ")})` }}
+      >
+        <div className="relative h-full overflow-hidden rounded-[11px] text-[#F2EFFA]" style={{ background: `radial-gradient(circle 243px at 50% 44%, ${B.bg[0]} 0%, ${B.bg[1]} 42%, ${B.bg[2]} 75%, ${B.bg[3]} 100%)` }}>
+          <div className="absolute inset-0" style={{ background: `repeating-conic-gradient(from 0deg at ${at}, ${light}30 0 3deg, transparent 3deg 12deg)`, ...fade(`radial-gradient(circle at ${at}, #000 18%, transparent 62%)`) }} />
+          <div className="absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(118deg, ${streaks})` }} />
+          <div className="absolute inset-0 opacity-50" style={{ background: "radial-gradient(circle, #ffffff55 0 0.5px, transparent 0.9px) 0 0 / 7px 7px", ...fade("linear-gradient(180deg, #000, transparent 55%, #000)") }} />
+          {B.rings.map((r, i) => (
+            <div key={r} className="absolute rounded-full border" style={{ left: A.cx - r, top: B.cy - r, width: r * 2, height: r * 2, borderColor: light, opacity: 0.3 - i * 0.09 }} />
+          ))}
+          {/* the medallion: a foil ring around the brand mark */}
+          <div className="absolute rounded-full p-[3px]" style={{ left: A.cx - B.medallion, top: B.cy - B.medallion, width: B.medallion * 2, height: B.medallion * 2, background: `conic-gradient(from 210deg, ${ring.join(", ")})`, boxShadow: `0 0 34px -4px ${light}aa` }}>
+            <div className="flex h-full items-center justify-center rounded-full" style={{ background: "radial-gradient(circle at 50% 32%, #34265F, #120D28 68%, #0B0818)", boxShadow: "inset 0 0 0 5px #0B0818, inset 0 0 0 6px #ffffff22" }}>
+              <div style={{ filter: `drop-shadow(0 3px 0 #05030C) drop-shadow(0 0 16px ${light}99)` }}>
+                <LogoMark size={92} />
+              </div>
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 mix-blend-color-dodge" style={{ background: `linear-gradient(125deg, ${A.holo.map(([p, color]) => `${color} ${p * 100}%`).join(", ")})`, opacity: 0.2 }} />
+          <div className="pointer-events-none absolute inset-0 mix-blend-overlay opacity-60" style={{ background: "linear-gradient(121deg, #fff0 22%, #ffffffaa 31%, #fff0 42%)" }} />
+          <div className="pointer-events-none absolute inset-[9px] rounded-[6px] border border-white/15" />
+          {[[16, 16], [246, 16], [16, 368], [246, 368]].map(([x, y]) => (
+            <span key={`${x}-${y}`} className="absolute size-[7px] rotate-45" style={{ left: x, top: y, background: light }} />
+          ))}
+          <div className="num absolute inset-x-0 top-[24px] text-center text-[9px] uppercase tracking-[4.5px] text-[#C9C2E6]">Series 01</div>
+          <div className="absolute inset-x-0 top-[298px] flex justify-center" style={{ filter: "drop-shadow(0 3px 8px #000a)" }}>
+            <Wordmark className="text-[36px]" />
+          </div>
+          <div className="num absolute inset-x-0 bottom-[22px] text-center text-[8.5px] uppercase tracking-[2.5px] text-[#A9A3BC]">{B.foot}</div>
         </div>
       </div>
     </Scaled>

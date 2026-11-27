@@ -2,13 +2,12 @@ import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { Blur, BlurMask, Canvas, Circle, ColorMatrix, Group, LinearGradient, Oval, Paint, Path, Points, RadialGradient, Rect, RoundedRect, SweepGradient, rect, rrect, vec } from "@shopify/react-native-skia";
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { CARD_ART as A, FINISH, LOGO, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type CardTheme, type TierKey } from "@scratchers/ui-tokens";
+import { CARD_ART as A, CARD_BACK as B, FINISH, LOGO, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type CardTheme, type TierKey } from "@scratchers/ui-tokens";
 import { font } from "../theme";
 import { Wordmark } from "./Logo";
 
 const W = A.w;
 const H = A.h;
-const PAPER = rrect(rect(9, 9, 268, 390), 12, 12);
 
 // face-up card: everything below is drawn in the inner (framed) area's coordinates
 const IW = W - A.inset * 2;
@@ -70,9 +69,18 @@ export const Gem = ({ fill, size = 14 }: { fill: string; size?: number }) => (
   <View style={{ width: size * 0.72, height: size * 0.72, backgroundColor: fill, borderWidth: 1, borderColor: "#0D0B14", transform: [{ rotate: "45deg" }] }} />
 );
 
-const LATTICE = Array.from({ length: 36 }, (_, i) => `M ${i * 22 - 400} 9 l 390 390 M ${i * 22 - 100} 399 l 390 -390`).join(" ");
+const BACK_RAYS = Array.from({ length: 30 }, (_, i) => {
+  const at = (deg: number) => `${A.cx + 170 * Math.sin((deg * Math.PI) / 180)} ${B.cy - 170 * Math.cos((deg * Math.PI) / 180)}`;
+  return `M ${A.cx} ${B.cy} L ${at(i * 12)} L ${at(i * 12 + 3)} Z`;
+}).join(" ");
+const CORNERS = [[19.5, 19.5], [249.5, 19.5], [19.5, 371.5], [249.5, 371.5]].map(([x, y]) => `M ${x} ${y - 5} L ${x + 5} ${y} L ${x} ${y + 5} L ${x - 5} ${y} Z`).join(" ");
+/** The brand mark, 92 high, centred in the medallion (its viewBox is x 10..54, y 0..60). */
+const MARK = [{ translateX: A.cx - 32 * (92 / 60) }, { translateY: B.cy - 30 * (92 / 60) }, { scale: 92 / 60 }];
 
-/** Face-down card. `tease` pulses a rarity-coloured glow; Dust never glows (a glow always means a real pull). */
+/**
+ * Face-down card: the same foil as the faces, in the house colours, so it gives nothing away.
+ * `tease` pulses it in the rarity colour; Dust never glows (a glow always means a real pull).
+ */
 export function CardBack({ rarity = "dust", tease = false, width = W }: { rarity?: TierKey; tease?: boolean; width?: number }) {
   const k = width / W;
   const glow = tease && rarity !== "dust";
@@ -80,28 +88,92 @@ export function CardBack({ rarity = "dust", tease = false, width = W }: { rarity
   useEffect(() => {
     if (glow) pulse.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
   }, [glow, pulse]);
-  const ring = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const halo = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const edge = glow ? FINISH[rarity].edge : B.edge;
+  const ring = glow ? [...FINISH[rarity].edge, FINISH[rarity].edge[0]] : B.ring;
+  const light = glow ? TIERS[rarity].color : B.light;
+  const bleed = { position: "absolute" as const, left: -PAD * k, top: -PAD * k, width: (W + PAD * 2) * k, height: (H + PAD * 2) * k };
+  const centred = (top: number) => ({ position: "absolute" as const, left: 0, right: 0, top: top * k, alignItems: "center" as const });
+  const caps = (size: number, spacing: number, color: string) => ({ fontFamily: font.mono, fontSize: size * k, letterSpacing: spacing * k, color, includeFontPadding: false });
   return (
     <View style={{ width, height: H * k }}>
-      {glow && <Animated.View pointerEvents="none" style={[{ position: "absolute", left: -5, right: -5, top: -5, bottom: -5, borderRadius: 18 * k + 5, borderWidth: 5, borderColor: TIERS[rarity].color }, ring]} />}
+      {glow && (
+        <Animated.View pointerEvents="none" style={[bleed, halo]}>
+          <Canvas style={{ flex: 1 }}>
+            <Group transform={[{ scale: k }, { translateX: PAD }, { translateY: PAD }]}>
+              <RoundedRect x={0} y={0} width={W} height={H} r={18} color={light}>
+                <BlurMask blur={15} style="normal" />
+              </RoundedRect>
+            </Group>
+          </Canvas>
+        </Animated.View>
+      )}
       <Canvas style={{ width, height: H * k }}>
         <Group transform={[{ scale: k }]}>
-          <RoundedRect x={0} y={0} width={W} height={H} r={18} color={glow ? FINISH[rarity].frame : "#24202F"} />
-          <Group clip={PAPER}>
-            <Rect x={9} y={9} width={268} height={390} color="#2B1B5C" />
-            <Path path={LATTICE} style="stroke" strokeWidth={2} color="rgba(157,243,255,0.10)" />
-          </Group>
-          {/* the brand mark (viewBox x 10..54, y 0..60) at 1.8×, centred above the wordmark */}
-          <Group transform={[{ translateX: 143 - 32 * 1.8 }, { translateY: 126 }, { scale: 1.8 }]}>
-            <Path path={LOGO.top} color="#F2EFFA" />
-            <Path path={LOGO.bottom}>
-              <LinearGradient start={vec(12, 58)} end={vec(52, 21)} colors={[...LOGO.holo]} />
-            </Path>
+          <RoundedRect x={0} y={0} width={W} height={H} r={18}>
+            <LinearGradient start={vec(0, 0)} end={vec(W, H)} colors={edge} />
+          </RoundedRect>
+          <Group transform={[{ translateX: A.inset }, { translateY: A.inset }]}>
+            <Group clip={INNER}>
+              <Rect x={0} y={0} width={IW} height={IH}>
+                <RadialGradient c={vec(IW / 2, IH * 0.44)} r={243} colors={B.bg} positions={[0, 0.42, 0.75, 1]} />
+              </Rect>
+              <Path path={BACK_RAYS}>
+                <RadialGradient c={vec(A.cx, B.cy)} r={165} colors={[`${light}38`, `${light}38`, `${light}00`]} positions={[0, 0.3, 1]} />
+              </Path>
+              <Rect x={0} y={0} width={IW} height={IH} blendMode="screen">
+                <LinearGradient {...cssLine(118)} colors={A.streaks.map(([, tn, a]) => `${tn === "white" ? "#ffffff" : light}${a}`)} positions={A.streaks.map(([pos]) => pos)} />
+              </Rect>
+              <Points points={DOTS} mode="points" color="#ffffff" opacity={0.17} strokeWidth={1.2} strokeCap="round" />
+              {B.rings.map((r, i) => (
+                <Circle key={r} cx={A.cx} cy={B.cy} r={r} style="stroke" strokeWidth={1} color={light} opacity={0.3 - i * 0.09} />
+              ))}
+              <Circle cx={A.cx} cy={B.cy} r={B.medallion} color={light} opacity={0.65}>
+                <BlurMask blur={13} style="normal" />
+              </Circle>
+              <Circle cx={A.cx} cy={B.cy} r={B.medallion}>
+                <SweepGradient c={vec(A.cx, B.cy)} colors={ring} origin={vec(A.cx, B.cy)} transform={[{ rotate: (120 * Math.PI) / 180 }]} />
+              </Circle>
+              <Circle cx={A.cx} cy={B.cy} r={B.medallion - 3}>
+                <RadialGradient c={vec(A.cx, B.cy - 27)} r={106} colors={["#34265F", "#120D28", "#0B0818"]} positions={[0, 0.68, 1]} />
+              </Circle>
+              <Circle cx={A.cx} cy={B.cy} r={B.medallion - 5.5} style="stroke" strokeWidth={5} color="#0B0818" />
+              <Circle cx={A.cx} cy={B.cy} r={B.medallion - 8.5} style="stroke" strokeWidth={1} color="#ffffff22" />
+              <Group transform={MARK}>
+                {[LOGO.top, LOGO.bottom].map((d) => (
+                  <Path key={d} path={d} color={light} opacity={0.6}>
+                    <BlurMask blur={6} style="normal" />
+                  </Path>
+                ))}
+                <Group transform={[{ translateY: 2 }]}>
+                  <Path path={LOGO.top} color="#05030C" />
+                  <Path path={LOGO.bottom} color="#05030C" />
+                </Group>
+                <Path path={LOGO.top} color="#F2EFFA" />
+                <Path path={LOGO.bottom}>
+                  <LinearGradient start={vec(12, 58)} end={vec(52, 21)} colors={[...LOGO.holo]} />
+                </Path>
+              </Group>
+              <Rect x={0} y={0} width={IW} height={IH} opacity={0.2} blendMode="colorDodge">
+                <LinearGradient {...cssLine(125)} colors={A.holo.map(([, color]) => color)} positions={A.holo.map(([pos]) => pos)} />
+              </Rect>
+              <Rect x={0} y={0} width={IW} height={IH} opacity={0.6} blendMode="overlay">
+                <LinearGradient {...cssLine(121)} colors={["#ffffff00", "#ffffffaa", "#ffffff00"]} positions={[0.22, 0.31, 0.42]} />
+              </Rect>
+              <RoundedRect x={9.5} y={9.5} width={IW - 19} height={IH - 19} r={6} style="stroke" strokeWidth={1} color="#ffffff26" />
+              <Path path={CORNERS} color={light} />
+            </Group>
           </Group>
         </Group>
       </Canvas>
-      <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: 252 * k, alignItems: "center" }}>
-        <Wordmark size={30 * k} />
+      <View pointerEvents="none" style={centred(A.inset + 24)}>
+        <Text style={caps(9, 4.5, "#C9C2E6")}>SERIES 01</Text>
+      </View>
+      <View pointerEvents="none" style={centred(A.inset + 298)}>
+        <Wordmark size={36 * k} />
+      </View>
+      <View pointerEvents="none" style={centred(A.inset + 358)}>
+        <Text style={caps(8.5, 2.5, "#A9A3BC")}>{B.foot.toUpperCase()}</Text>
       </View>
     </View>
   );

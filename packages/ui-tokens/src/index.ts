@@ -228,6 +228,20 @@ export const CARD_ART = {
   holo: [[0.05, "#7AFCFF00"], [0.28, "#B28DFF"], [0.46, "#FF6EC700"], [0.62, "#FEFF9C00"], [0.8, "#7AFCFF"], [0.95, "#FF6EC700"]] as [number, string][],
 } as const;
 
+/** Face-down card: the house colours, so it gives nothing away. Same geometry as the face. */
+export const CARD_BACK = {
+  /** centre of the medallion, and its radius */
+  cy: 170,
+  medallion: 79,
+  rings: [104, 130, 158],
+  bg: ["#3A2A72", "#1F1745", "#100C26", "#090714"],
+  /** frame and medallion ring while no rarity is teased, and the light around them */
+  edge: ["#7C739C", "#2E2845", "#5B8C99", "#2E2845", "#8A5F86"],
+  ring: ["#9DF3FF", "#B18CFF", "#FF6EC7", "#FEFF9C", "#9DF3FF"],
+  light: "#B18CFF",
+  foot: "Drawn by MagicBlock VRF",
+};
+
 /** Grail sparkles, below the header. */
 export const SPARKLES = Array.from({ length: 9 }, (_, i) => ({ x: ((i * 71 + 19) % 244) + 14, y: 70 + ((i * 113 + 44) % 205), r: 3.5 + (i % 3) * 2.5, color: ["#FFFFFF", "#FFE98A", "#FFD84D"][i % 3] }));
 
