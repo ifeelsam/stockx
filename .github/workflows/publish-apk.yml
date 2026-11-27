@@ -1,0 +1,33 @@
+# Copies the APK attached to a release into GitHub Packages (ghcr.io), as an OCI artifact:
+#   gh workflow run publish-apk.yml -f tag=v0.2.0-devnet
+#   oras pull ghcr.io/ifeelsam/stockx-apk:0.2.0-devnet
+name: publish-apk
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose APK to publish
+        required: true
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oras-project/setup-oras@v1
+      - name: Push the release APK to ghcr.io
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }} # through the environment, never pasted into the script
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir apk
+          cd apk
+          apk=$(ls *.apk)
+          echo "$GH_TOKEN" | oras login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          oras push "ghcr.io/${GITHUB_REPOSITORY,,}-apk:${TAG#v},latest" \
+            --artifact-type application/vnd.android.package-archive \
+            --annotation "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --annotation "org.opencontainers.image.description=ripStokx Android app, devnet test build" \
+            "$apk:application/vnd.android.package-archive"
