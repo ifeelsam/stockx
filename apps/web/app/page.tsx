@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { FINISH, STOCK_LOOK, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
+import { STOCK_LOOK, TIERS, TIER_KEYS } from "@scratchers/ui-tokens";
 import { isPaused, useGame, VISIBLE_SERIES } from "@scratchers/app-core";
 import { multiplierOf, rtp, totalWeight, DEFAULT_TIERS } from "@scratchers/sdk";
 import { HoloCard } from "@/components/HoloCard";
@@ -54,7 +54,7 @@ export default function Packs() {
             return (
               <li key={k} className="flex flex-none flex-col gap-2">
                 <HoloCard feed={cur.feed} rarity={k} mult={mult} usd={cardUsd(multiplierOf(cur.tiers[i]) * cur.ticketUsd)} shares={odds} serial="——" tilt={(0.15 + i * 0.12) % 1} width={160} />
-                <span className="font-extrabold" style={{ color: FINISH[k] && TIERS[k].color }}>{TIERS[k].label} {mult}</span>
+                <span className="font-extrabold" style={{ color: TIERS[k].color }}>{TIERS[k].label} {mult}</span>
                 <span className="num -mt-1.5 text-[11px] text-dim">{odds}</span>
               </li>
             );

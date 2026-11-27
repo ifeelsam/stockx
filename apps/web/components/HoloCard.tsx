@@ -1,62 +1,42 @@
-import { FINISH, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { useId, type CSSProperties } from "react";
+import { CARD_ART as A, FINISH, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
 import { Scaled } from "./Scaled";
 import { LogoMark, Wordmark } from "./Logo";
 
 export type { CardFace, Feed };
 
-const HOLO = (a: number) => `conic-gradient(from ${Math.round(a * 360)}deg at ${Math.round(a * 100)}% 40%, #ff6ec7, #7afcff, #feff9c, #b28dff, #ff6ec7)`;
-const FRAME_TEX: Record<TierKey, string> = {
-  dust: "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15))",
-  common: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.12))",
-  uncommon: "repeating-linear-gradient(90deg, rgba(255,255,255,0.07) 0 1px, transparent 1px 6px)",
-  rare: "linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 40%, rgba(0,0,0,0.15))",
-  epic: "radial-gradient(circle, rgba(255,255,255,0.8) 0 0.8px, transparent 1.2px) 0 0 / 11px 13px, radial-gradient(circle, rgba(157,243,255,0.7) 0 0.6px, transparent 1px) 5px 6px / 17px 19px",
-  legend: "repeating-linear-gradient(45deg, rgba(255,255,255,0.22) 0 2px, transparent 2px 7px), linear-gradient(180deg, rgba(255,255,255,0.25), rgba(0,0,0,0.2))",
-  mythic: "linear-gradient(180deg, rgba(255,255,255,0.2), rgba(0,0,0,0.15))",
-  grail: "repeating-linear-gradient(-45deg, rgba(255,255,255,0.18) 0 1px, transparent 1px 5px)",
-};
-const frameFill = (r: TierKey, a: number) =>
-  r === "mythic"
-    ? `conic-gradient(from ${Math.round(a * 360)}deg, #ff6ec7, #ffb86b, #feff9c, #7afcff, #b28dff, #ff6ec7)`
-    : r === "grail"
-      ? "linear-gradient(135deg, #FFF3B0, #FFD84D 30%, #B8860B 55%, #FFE98A 75%, #C99A1A)"
-      : FINISH[r].frame;
-
-function Art({ feed }: { feed: Feed }) {
+/** The brand mark as a glossy raised badge; `flat` is the faint one behind it. */
+function BrandMark({ feed, size, flat, style }: { feed: Feed; size: number; flat?: boolean; style: CSSProperties }) {
+  const c = STOCK_LOOK[feed].card;
+  const id = useId().replace(/\W/g, "");
+  const [x1, y1, x2, y2] = c.line;
   return (
-    <svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 246 196" preserveAspectRatio="xMidYMid slice">
-      {feed === "TSLA" && (
+    <svg aria-hidden="true" className="absolute overflow-visible" width={size} height={size} viewBox="-1.5 -1.5 27 28" style={style}>
+      <defs>
+        <linearGradient id={`f${id}`} x1={x1} y1={y1} x2={x2} y2={y2}>
+          {c.face.map((color, i) => (
+            <stop key={i} offset={[0, 0.28, 0.62, 1][i]} stopColor={color} />
+          ))}
+        </linearGradient>
+        <linearGradient id={`g${id}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0.3" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.46" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="0.56" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {!flat && [6, 5, 4, 3, 2, 1].map((i) => <path key={i} d={c.logo} fill={c.extrude[i > 3 ? 0 : 1]} transform={`translate(0 ${i * 0.13})`} />)}
+      <path d={c.logo} fill={`url(#f${id})`} />
+      {!flat && (
         <>
-          <circle cx="123" cy="150" r="96" fill="#FFB23F" />
-          <circle cx="123" cy="150" r="62" fill="#FFE27A" />
-          <path d="M0 150 H246 V196 H0 Z" fill="#2B1B5C" />
-          <path d="M123 150 L60 196 M123 150 L186 196" stroke="#F2EFFA" strokeWidth="4" />
-          <path d="M118 150 L104 196 M128 150 L142 196" stroke="#F2EFFA" strokeWidth="2" strokeDasharray="6 6" />
-          <path d="M20 118 L60 92 L86 104 L130 60 L160 78 L206 30" fill="none" stroke="#2B1B5C" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-        </>
-      )}
-      {feed === "NVDA" && (
-        <>
-          <path d="M0 40 H246 M0 80 H246 M0 120 H246 M0 160 H246 M41 0 V196 M82 0 V196 M123 0 V196 M164 0 V196 M205 0 V196" stroke="#0E5A35" strokeWidth="2" />
-          <rect x="82" y="80" width="82" height="80" fill="#0D0B14" />
-          <rect x="96" y="94" width="54" height="52" fill="#B8FF5C" />
-          <path d="M82 100 H60 M82 140 H40 M164 100 H200 M164 140 H220 M110 80 V50 M136 160 V190" stroke="#B8FF5C" strokeWidth="4" strokeLinecap="round" />
-        </>
-      )}
-      {feed === "SOL" && (
-        <>
-          <ellipse cx="123" cy="104" rx="110" ry="34" fill="none" stroke="#F2EFFA" strokeWidth="3" transform="rotate(-14 123 104)" />
-          <ellipse cx="123" cy="104" rx="80" ry="22" fill="none" stroke="#FFD84D" strokeWidth="2" strokeDasharray="5 6" transform="rotate(-14 123 104)" />
-          <circle cx="123" cy="100" r="40" fill="#FF8AC2" />
-          <circle cx="110" cy="88" r="12" fill="#FFC2DF" />
-          <circle cx="40" cy="40" r="3" fill="#F2EFFA" />
-          <circle cx="210" cy="30" r="2" fill="#F2EFFA" />
-          <circle cx="196" cy="170" r="3" fill="#FFD84D" />
+          <path d={c.logo} fill={`url(#g${id})`} />
+          <path d={c.logo} fill="none" stroke={c.rim} strokeOpacity="0.7" strokeWidth="0.09" />
         </>
       )}
     </svg>
   );
 }
+
+const fade = (stops: string): CSSProperties => ({ maskImage: stops, WebkitMaskImage: stops });
 
 const Gem = ({ fill, size = 14 }: { fill: string; size?: number }) => (
   <svg aria-hidden="true" width={size} height={size} viewBox="0 0 14 14">
@@ -87,71 +67,84 @@ export function CardBack({ rarity = "dust", tease = false, width = 286 }: { rari
   );
 }
 
-/** The face-up card: frame, holo coverage and layout come from the rarity (see FINISH). */
+/** The face-up card: foil art in the company's colours; frame, foil and effects come from the rarity (see FINISH). */
 export function HoloCard({ feed, rarity, mult, usd, shares, now, serial, tilt = 0.35, width = 286 }: CardFace & { width?: number }) {
   const f = FINISH[rarity];
   const t = TIERS[rarity];
   const look = STOCK_LOOK[feed];
+  const c = look.card;
   const gold = rarity === "grail";
-  const ink = f.full ? "#F2EFFA" : "#0D0B14";
-  const accentInk = gold ? "#FFD84D" : ink;
+  const dust = rarity === "dust";
+  const ink = gold ? "#FFD84D" : "#FFFFFF";
+  const at = `${A.cx}px ${A.cy}px`;
+  const streaks = A.streaks.map(([p, tone, a]) => `${tone === "white" ? "#ffffff" : look.glow}${a} ${p * 100}%`).join(", ");
+  const sheen = 22 + Math.round((tilt - 0.35) * 40);
   return (
-    <Scaled w={286} h={408} width={width}>
-      <div className="relative h-[408px] w-[286px] rounded-[18px] p-[9px] shadow-[0_30px_60px_-24px_rgba(0,0,0,0.85)]" style={{ background: frameFill(rarity, tilt) }}>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[18px]" style={{ background: FRAME_TEX[rarity] }} />
-        <div
-          className="relative flex h-full flex-col overflow-hidden rounded-xl"
-          style={{ background: f.full ? "#0D0B14" : "#F2EFFA", color: ink, boxShadow: gold ? "inset 0 0 0 1.5px rgba(255,216,77,0.7)" : undefined }}
-        >
-          <div
-            className={`order-2 overflow-hidden ${f.full ? "absolute inset-0" : "relative mx-2.5 h-[196px] rounded-md"}`}
-            style={{ background: look.art, filter: rarity === "dust" ? "grayscale(1) contrast(0.85) brightness(1.05)" : rarity === "common" ? "saturate(0.7)" : undefined }}
-          >
-            <Art feed={feed} />
-            <div className="absolute inset-0 mix-blend-color-dodge" style={{ background: HOLO(tilt), opacity: f.holo }} />
-            {f.full && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(13,11,20,0.55) 0%, rgba(13,11,20,0) 22%, rgba(13,11,20,0) 52%, rgba(13,11,20,0.82) 78%, rgba(13,11,20,0.92) 100%)" }} />}
+    <Scaled w={A.w} h={A.h} width={width}>
+      <div
+        className="relative h-[408px] w-[286px] rounded-[18px] p-2"
+        style={{ background: `linear-gradient(135deg, ${f.edge.join(", ")})`, boxShadow: `${f.glow ? `0 0 34px -6px ${t.color}88, ` : ""}0 30px 60px -24px rgba(0,0,0,0.85)` }}
+      >
+        <div className="relative h-full overflow-hidden rounded-[11px]" style={{ background: c.panel, color: "#F2EFFA", boxShadow: gold ? "inset 0 0 0 1.5px #FFD84DBB" : undefined }}>
+          <div className="absolute inset-0" style={{ filter: dust ? "grayscale(1) brightness(0.78) contrast(0.9)" : f.saturation < 1 ? `saturate(${f.saturation})` : undefined }}>
+            <div className="absolute inset-0" style={{ background: `radial-gradient(circle 243px at 50% 40%, ${c.bg[0]} 0%, ${c.bg[1]} 42%, ${c.bg[2]} 75%, ${c.bg[3]} 100%)` }} />
+            <BrandMark feed={feed} size={A.mark.size} flat style={{ left: A.mark.x, top: c.mark.y, opacity: c.mark.alpha, filter: "saturate(0.6) brightness(1.7)", ...fade("linear-gradient(180deg, #000 12%, transparent 62%)") }} />
+            {f.rays && (
+              <div
+                className="absolute inset-0"
+                style={{ background: `radial-gradient(circle at ${at}, #ffd84d88 0, #ffd84d22 28%, transparent 55%), repeating-conic-gradient(from 0deg at ${at}, #ffe98a40 0 5deg, transparent 5deg 15deg)`, ...fade(`radial-gradient(circle at ${at}, #000 20%, transparent 68%)`) }}
+              />
+            )}
+            <div className="absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(118deg, ${streaks})` }} />
+            <div className="absolute inset-0 opacity-50" style={{ background: "radial-gradient(circle, #ffffff55 0 0.5px, transparent 0.9px) 0 0 / 7px 7px", ...fade("linear-gradient(180deg, #000, transparent 55%, #000)") }} />
+            {[103, 131].map((r, i) => (
+              <div key={r} className="absolute rounded-full border" style={{ left: A.cx - r, top: A.cy - r, width: r * 2, height: r * 2, borderColor: c.soft, opacity: i ? 0.13 : 0.28 }} />
+            ))}
+            <div className="absolute left-[45px] top-[228px] h-[26px] w-[180px] rounded-full blur-[3px]" style={{ background: `radial-gradient(closest-side, ${look.glow}cc, ${look.glow}00)` }} />
+            <BrandMark feed={feed} size={c.size} style={{ left: A.cx - c.size / 2, top: A.cy - c.size / 2, filter: `drop-shadow(0 0 22px ${look.glow}99) drop-shadow(0 10px 10px #0008)` }} />
           </div>
 
-          <div className="relative order-1 flex items-center justify-between px-3 py-2.5">
-            <span className="text-[26px] font-extrabold tracking-tight" style={{ color: accentInk }}>{look.symbol}</span>
+          {f.holo > 0 && (
+            <>
+              <div className="pointer-events-none absolute inset-0 mix-blend-color-dodge" style={{ background: `linear-gradient(125deg, ${A.holo.map(([p, color]) => `${color} ${p * 100}%`).join(", ")})`, opacity: f.holo * 0.34 }} />
+              <div className="pointer-events-none absolute inset-0 mix-blend-overlay" style={{ background: `linear-gradient(121deg, #fff0 ${sheen}%, #ffffffaa ${sheen + 9}%, #fff0 ${sheen + 20}%)`, opacity: f.holo }} />
+            </>
+          )}
+          {f.sparkle &&
+            SPARKLES.map((p, i) => (
+              <svg key={i} aria-hidden="true" className="tw absolute" width={p.r * 2} height={p.r * 2} viewBox="0 0 20 20" style={{ left: p.x - p.r, top: p.y - p.r, animationDuration: `${1.6 + (i % 4) * 0.5}s`, animationDelay: `${-i * 0.45}s` }}>
+                <path d="M10 0 C11 7 13 9 20 10 C13 11 11 13 10 20 C9 13 7 11 0 10 C7 9 9 7 10 0 Z" fill={p.color} />
+              </svg>
+            ))}
+
+          <div className="absolute left-[13px] right-[11px] top-[11px] flex items-start justify-between">
+            <div>
+              <div className="text-[28px] font-extrabold leading-[26px] tracking-[-0.5px]" style={{ color: ink, textShadow: "0 2px 8px #0009" }}>{look.symbol}</div>
+              <div className="num mt-1 text-[9px] uppercase tracking-[4.5px]" style={{ color: c.caption }}>{look.company}</div>
+            </div>
             <span
-              className="num flex items-center gap-1.5 rounded-full text-[11px] font-bold uppercase"
-              style={f.filledBadge ? { background: t.color, color: "#0D0B14", padding: "3px 8px" } : { color: rarity === "dust" ? "#4E4864" : "#0D0B14" }}
+              className="num flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.6px]"
+              style={dust ? { color: "#B4AEC6", borderColor: "#5A546E", background: "#0D0B14AA" } : { background: t.color, borderColor: t.color, color: "#0D0B14" }}
             >
-              <Gem fill={f.filledBadge ? "#0D0B14" : t.color} />
+              <Gem fill={dust ? t.color : "#0D0B14"} size={11} />
               {t.label}
             </span>
           </div>
 
-          <div className={`relative order-3 flex items-baseline justify-between px-3 pt-2.5 ${f.full ? "mt-auto" : ""}`}>
-            <span className="text-[54px] font-extrabold leading-[50px] tracking-[-2px]" style={{ color: accentInk }}>{mult}</span>
-            <span className="text-lg font-bold">{usd}</span>
-          </div>
-          <div className="num relative order-4 flex justify-between px-3 pt-1.5 text-[11px]">
-            <span>{shares}</span>
-            <span>{now}</span>
-          </div>
-          <div className={`num relative order-5 flex justify-between border-t px-3 py-2 text-[10px] ${f.full ? "" : "mt-auto"}`} style={{ borderColor: f.full ? "rgba(242,239,250,0.22)" : "#D9D4E6", color: f.full ? "#C9C2E6" : "#4E4864" }}>
-            <span>Series 01 · {look.company}</span>
-            <span>№ {serial}</span>
-          </div>
-
-          {f.cardHolo > 0 && <div className="pointer-events-none absolute inset-0 mix-blend-color-dodge" style={{ background: HOLO(tilt), opacity: f.cardHolo }} />}
-          {f.holo > 0 && (
-            <div
-              className="pointer-events-none absolute inset-0 mix-blend-overlay"
-              style={{ background: `linear-gradient(${100 + Math.round(tilt * 60)}deg, rgba(255,255,255,0) ${Math.round(tilt * 60)}%, rgba(255,255,255,0.6) ${Math.round(tilt * 60 + 8)}%, rgba(255,255,255,0) ${Math.round(tilt * 60 + 18)}%)` }}
-            />
-          )}
-          {f.sparkle && (
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-              {Array.from({ length: 7 }, (_, i) => (
-                <svg key={i} className="tw absolute" width={8 + (i % 3) * 5} height={8 + (i % 3) * 5} viewBox="0 0 20 20" style={{ left: (i * 71 + 23) % 240, top: (i * 97 + 30) % 340, animationDuration: `${1.6 + (i % 4) * 0.5}s`, animationDelay: `${-i * 0.45}s` }}>
-                  <path d="M10 0 C11 7 13 9 20 10 C13 11 11 13 10 20 C9 13 7 11 0 10 C7 9 9 7 10 0 Z" fill={["#FFFFFF", "#FFE98A", "#FFD84D"][i % 3]} />
-                </svg>
-              ))}
+          <div className="absolute inset-x-0 bottom-0 border-t px-[13px] py-2 backdrop-blur-[10px]" style={{ top: A.panelY, borderColor: `${t.color}66`, background: `linear-gradient(180deg, ${c.panel}b8, ${c.panel}f2)` }}>
+            <div className="flex items-baseline justify-between">
+              <span className="text-[50px] font-extrabold leading-[50px] tracking-[-2px]" style={{ color: dust ? "#C9C2D8" : ink }}>{mult}</span>
+              <span className="text-xl font-bold">{usd}</span>
             </div>
-          )}
+            <div className="num mt-[3px] flex justify-between text-[10.5px] text-[#E4DFF2]">
+              <span>{shares}</span>
+              <span style={{ color: now?.includes("\u25bc") ? "#FF8A7A" : dust ? "#C9C2D8" : "#9DF3FF" }}>{now}</span>
+            </div>
+            <div className="num mt-[7px] flex justify-between border-t border-white/15 pt-1.5 text-[8.5px] uppercase tracking-[0.8px] text-[#A9A3BC]">
+              <span>Series 01 · {look.company}</span>
+              <span>№ {serial}</span>
+            </div>
+          </div>
         </div>
       </div>
     </Scaled>

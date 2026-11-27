@@ -1,51 +1,67 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
-import { Canvas, Circle, ColorMatrix, DashPathEffect, Group, LinearGradient, Oval, Paint, Path, Rect, RoundedRect, Skia, SweepGradient, rect, rrect, vec } from "@shopify/react-native-skia";
+import { Blur, BlurMask, Canvas, Circle, ColorMatrix, Group, LinearGradient, Oval, Paint, Path, Points, RadialGradient, Rect, RoundedRect, SweepGradient, rect, rrect, vec } from "@shopify/react-native-skia";
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
-import { FINISH, LOGO, STOCK_LOOK, TIERS, type CardFace, type Feed, type TierKey } from "@scratchers/ui-tokens";
+import { CARD_ART as A, FINISH, LOGO, SPARKLES, STOCK_LOOK, TIERS, type CardFace, type CardTheme, type TierKey } from "@scratchers/ui-tokens";
 import { font } from "../theme";
 import { Wordmark } from "./Logo";
 
-const W = 286;
-const H = 408;
-const HOLO = ["#ff6ec7", "#7afcff", "#feff9c", "#b28dff", "#ff6ec7"];
-const GRAY = [0.2126, 0.7152, 0.0722, 0, 0.04, 0.2126, 0.7152, 0.0722, 0, 0.04, 0.2126, 0.7152, 0.0722, 0, 0.04, 0, 0, 0, 1, 0];
+const W = A.w;
+const H = A.h;
 const PAPER = rrect(rect(9, 9, 268, 390), 12, 12);
 
-/** Original per-stock art on a 246×196 canvas (same shapes as the web SVGs). */
-function Art({ feed }: { feed: Feed }) {
-  if (feed === "TSLA")
-    return (
-      <Group>
-        <Circle cx={123} cy={150} r={96} color="#FFB23F" />
-        <Circle cx={123} cy={150} r={62} color="#FFE27A" />
-        <Rect x={0} y={150} width={246} height={46} color="#2B1B5C" />
-        <Path path="M123 150 L60 196 M123 150 L186 196" style="stroke" strokeWidth={4} color="#F2EFFA" />
-        <Path path="M118 150 L104 196 M128 150 L142 196" style="stroke" strokeWidth={2} color="#F2EFFA">
-          <DashPathEffect intervals={[6, 6]} />
-        </Path>
-        <Path path="M20 118 L60 92 L86 104 L130 60 L160 78 L206 30" style="stroke" strokeWidth={6} strokeCap="round" strokeJoin="round" color="#2B1B5C" />
-      </Group>
-    );
-  if (feed === "NVDA")
-    return (
-      <Group>
-        <Path path="M0 40 H246 M0 80 H246 M0 120 H246 M0 160 H246 M41 0 V196 M82 0 V196 M123 0 V196 M164 0 V196 M205 0 V196" style="stroke" strokeWidth={2} color="#0E5A35" />
-        <Rect x={82} y={80} width={82} height={80} color="#0D0B14" />
-        <Rect x={96} y={94} width={54} height={52} color="#B8FF5C" />
-        <Path path="M82 100 H60 M82 140 H40 M164 100 H200 M164 140 H220 M110 80 V50 M136 160 V190" style="stroke" strokeWidth={4} strokeCap="round" color="#B8FF5C" />
-      </Group>
-    );
+// face-up card: everything below is drawn in the inner (framed) area's coordinates
+const IW = W - A.inset * 2;
+const IH = H - A.inset * 2;
+const INNER = rrect(rect(0, 0, IW, IH), 11, 11);
+/** room around the card for its glow */
+const PAD = 26;
+const DOTS = Array.from({ length: Math.ceil(IH / 7) * Math.ceil(IW / 7) }, (_, i) => vec((i % Math.ceil(IW / 7)) * 7 + 3.5, Math.floor(i / Math.ceil(IW / 7)) * 7 + 3.5));
+const RAYS = Array.from({ length: 24 }, (_, i) => {
+  const at = (deg: number) => `${A.cx + 220 * Math.sin((deg * Math.PI) / 180)} ${A.cy - 220 * Math.cos((deg * Math.PI) / 180)}`;
+  return `M ${A.cx} ${A.cy} L ${at(i * 15)} L ${at(i * 15 + 5)} Z`;
+}).join(" ");
+
+/** The ends of a CSS `linear-gradient(<deg>deg, …)` over the inner area, so foil angles match the web. */
+const cssLine = (deg: number) => {
+  const dx = Math.sin((deg * Math.PI) / 180);
+  const dy = -Math.cos((deg * Math.PI) / 180);
+  const half = (Math.abs(IW * dx) + Math.abs(IH * dy)) / 2;
+  return { start: vec(IW / 2 - dx * half, IH / 2 - dy * half), end: vec(IW / 2 + dx * half, IH / 2 + dy * half) };
+};
+
+/** CSS saturate(s), then brightness(b). */
+const toneMatrix = (s: number, b = 1) => {
+  const [r, g, bl] = [0.2126 * (1 - s), 0.7152 * (1 - s), 0.0722 * (1 - s)];
+  return [(r + s) * b, g * b, bl * b, 0, 0, r * b, (g + s) * b, bl * b, 0, 0, r * b, g * b, (bl + s) * b, 0, 0, 0, 0, 0, 1, 0];
+};
+
+/** Places the 24-unit logo in a `size` box at (x, y), as the web's padded viewBox does. */
+const logoAt = (x: number, y: number, size: number) => {
+  const k = size / 28;
+  return [{ translateX: x + 2 * k }, { translateY: y + 1.5 * k }, { scale: k }];
+};
+
+/** The brand mark as a glossy raised badge. */
+function BrandMark({ c, glow }: { c: CardTheme; glow: string }) {
+  const [x1, y1, x2, y2] = c.line;
   return (
-    <Group>
-      <Group transform={[{ rotate: (-14 * Math.PI) / 180 }]} origin={vec(123, 104)}>
-        <Oval x={13} y={70} width={220} height={68} style="stroke" strokeWidth={3} color="#F2EFFA" />
-        <Oval x={43} y={82} width={160} height={44} style="stroke" strokeWidth={2} color="#FFD84D" />
-      </Group>
-      <Circle cx={123} cy={100} r={40} color="#FF8AC2" />
-      <Circle cx={110} cy={88} r={12} color="#FFC2DF" />
-      <Circle cx={40} cy={40} r={3} color="#F2EFFA" />
-      <Circle cx={196} cy={170} r={3} color="#FFD84D" />
+    <Group transform={logoAt(A.cx - c.size / 2, A.cy - c.size / 2, c.size)}>
+      <Path path={c.logo} color={glow} opacity={0.65}>
+        <BlurMask blur={2.2} style="normal" />
+      </Path>
+      {[6, 5, 4, 3, 2, 1].map((i) => (
+        <Group key={i} transform={[{ translateY: i * 0.13 }]}>
+          <Path path={c.logo} color={c.extrude[i > 3 ? 0 : 1]} />
+        </Group>
+      ))}
+      <Path path={c.logo}>
+        <LinearGradient start={vec(x1 * 24, y1 * 24)} end={vec(x2 * 24, y2 * 24)} colors={c.face} positions={[0, 0.28, 0.62, 1]} />
+      </Path>
+      <Path path={c.logo}>
+        <LinearGradient start={vec(0, 0)} end={vec(24, 24)} colors={["#ffffff00", "#ffffff8c", "#ffffff00"]} positions={[0.3, 0.46, 0.56]} />
+      </Path>
+      <Path path={c.logo} style="stroke" strokeWidth={0.09} color={c.rim} opacity={0.7} />
     </Group>
   );
 }
@@ -91,86 +107,113 @@ export function CardBack({ rarity = "dust", tease = false, width = W }: { rarity
   );
 }
 
-/** The face-up card: frame, holo coverage and layout come from the rarity (see FINISH). */
+/** The face-up card: foil art in the company's colours; frame, foil and effects come from the rarity (see FINISH). */
 export function HoloCard({ feed, rarity, mult, usd, shares, now, serial, tilt = 0.35, width = W }: CardFace & { width?: number }) {
   const k = width / W;
   const f = FINISH[rarity];
   const t = TIERS[rarity];
   const look = STOCK_LOOK[feed];
+  const c = look.card;
   const gold = rarity === "grail";
-  const ink = f.full ? "#F2EFFA" : "#0D0B14";
-  const head = gold ? "#FFD84D" : ink;
-  const muted = f.full ? "#C9C2E6" : "#4E4864";
-  const art = f.full ? { x: 9, y: 9, w: 268, h: 390, r: 12 } : { x: 19, y: 61, w: 248, h: 196, r: 6 };
-  const s = Math.max(art.w / 246, art.h / 196);
-  const angle = tilt * Math.PI * 2;
-  const stars = useMemo(() => Array.from({ length: 7 }, (_, i) => ({ x: ((i * 71 + 23) % 240) + 20, y: ((i * 97 + 30) % 340) + 30, r: 4 + (i % 3) * 2 })), []);
-  const text = (size: number, family: string, color: string = ink) => ({ fontFamily: family, fontSize: size * k, color, includeFontPadding: false });
+  const dust = rarity === "dust";
+  const ink = gold ? "#FFD84D" : "#FFFFFF";
+  const sheen = 0.22 + (tilt - 0.35) * 0.4;
+  const tone = dust ? toneMatrix(0, 0.78) : f.saturation < 1 ? toneMatrix(f.saturation) : undefined;
+  const text = (size: number, family: string, color: string = "#F2EFFA") => ({ fontFamily: family, fontSize: size * k, color, includeFontPadding: false });
+  const row = (top: number) => ({ position: "absolute" as const, left: (A.inset + 13) * k, right: (A.inset + 13) * k, top: (A.inset + top) * k, flexDirection: "row" as const, justifyContent: "space-between" as const });
   return (
     <View style={{ width, height: H * k }} accessibilityLabel={`${t.label} ${look.company} card ${mult}`}>
-      <Canvas style={{ position: "absolute", width, height: H * k }}>
-        <Group transform={[{ scale: k }]}>
-          <RoundedRect x={0} y={0} width={W} height={H} r={18} color={f.frame}>
-            {rarity === "grail" && <LinearGradient start={vec(0, 0)} end={vec(W, H)} colors={["#FFF3B0", "#FFD84D", "#B8860B", "#FFE98A", "#C99A1A"]} positions={[0, 0.3, 0.55, 0.75, 1]} />}
-            {rarity === "mythic" && <SweepGradient c={vec(W / 2, H / 2)} colors={["#ff6ec7", "#ffb86b", "#feff9c", "#7afcff", "#b28dff", "#ff6ec7"]} />}
+      <Canvas style={{ position: "absolute", left: -PAD * k, top: -PAD * k, width: (W + PAD * 2) * k, height: (H + PAD * 2) * k }}>
+        <Group transform={[{ scale: k }, { translateX: PAD }, { translateY: PAD }]}>
+          {f.glow && (
+            <RoundedRect x={4} y={4} width={W - 8} height={H - 8} r={18} color={t.color} opacity={0.5}>
+              <BlurMask blur={13} style="normal" />
+            </RoundedRect>
+          )}
+          <RoundedRect x={0} y={0} width={W} height={H} r={18}>
+            {rarity === "mythic" ? <SweepGradient c={vec(W / 2, H / 2)} colors={f.edge} /> : <LinearGradient start={vec(0, 0)} end={vec(W, H)} colors={f.edge} />}
           </RoundedRect>
-          <RoundedRect x={9} y={9} width={268} height={390} r={12} color={f.full ? "#0D0B14" : "#F2EFFA"} />
-          <Group clip={rrect(rect(art.x, art.y, art.w, art.h), art.r, art.r)}>
-            <Group layer={rarity === "dust" ? <Paint><ColorMatrix matrix={GRAY} /></Paint> : undefined}>
-              <Rect x={art.x} y={art.y} width={art.w} height={art.h} color={look.art} />
-              <Group transform={[{ translateX: art.x + (art.w - 246 * s) / 2 }, { translateY: art.y + (art.h - 196 * s) / 2 }, { scale: s }]}>
-                <Art feed={feed} />
+          <Group transform={[{ translateX: A.inset }, { translateY: A.inset }]}>
+            <Group clip={INNER}>
+              <Group layer={tone ? <Paint><ColorMatrix matrix={tone} /></Paint> : undefined}>
+                <Rect x={0} y={0} width={IW} height={IH}>
+                  <RadialGradient c={vec(IW / 2, IH * 0.4)} r={243} colors={c.bg} positions={[0, 0.42, 0.75, 1]} />
+                </Rect>
+                <Group transform={logoAt(A.mark.x, c.mark.y, A.mark.size)} opacity={c.mark.alpha}>
+                  <Path path={c.logo}>
+                    <LinearGradient start={vec(0, 2)} end={vec(0, 17)} colors={["#ffffffff", "#ffffff00"]} />
+                  </Path>
+                </Group>
+                {f.rays && (
+                  <Group>
+                    <Rect x={0} y={0} width={IW} height={IH}>
+                      <RadialGradient c={vec(A.cx, A.cy)} r={150} colors={["#ffd84d88", "#ffd84d22", "#ffd84d00"]} positions={[0, 0.5, 1]} />
+                    </Rect>
+                    <Path path={RAYS}>
+                      <RadialGradient c={vec(A.cx, A.cy)} r={180} colors={["#ffe98a55", "#ffe98a44", "#ffe98a00"]} positions={[0, 0.3, 1]} />
+                    </Path>
+                  </Group>
+                )}
+                <Rect x={0} y={0} width={IW} height={IH} blendMode="screen">
+                  <LinearGradient {...cssLine(118)} colors={A.streaks.map(([, tn, a]) => `${tn === "white" ? "#ffffff" : look.glow}${a}`)} positions={A.streaks.map(([pos]) => pos)} />
+                </Rect>
+                <Points points={DOTS} mode="points" color="#ffffff" opacity={0.17} strokeWidth={1.2} strokeCap="round" />
+                {[103, 131].map((r, i) => (
+                  <Circle key={r} cx={A.cx} cy={A.cy} r={r} style="stroke" strokeWidth={1} color={c.soft} opacity={i ? 0.13 : 0.28} />
+                ))}
+                <Oval x={45} y={228} width={180} height={26} color={look.glow} opacity={0.6}>
+                  <Blur blur={7} />
+                </Oval>
+                <BrandMark c={c} glow={look.glow} />
               </Group>
+
+              {f.holo > 0 && (
+                <Group>
+                  <Rect x={0} y={0} width={IW} height={IH} opacity={f.holo * 0.34} blendMode="colorDodge">
+                    <LinearGradient {...cssLine(125)} colors={A.holo.map(([, color]) => color)} positions={A.holo.map(([pos]) => pos)} />
+                  </Rect>
+                  <Rect x={0} y={0} width={IW} height={IH} opacity={f.holo} blendMode="overlay">
+                    <LinearGradient {...cssLine(121)} colors={["#ffffff00", "#ffffffaa", "#ffffff00"]} positions={[sheen, sheen + 0.09, sheen + 0.2]} />
+                  </Rect>
+                </Group>
+              )}
+              {f.sparkle &&
+                SPARKLES.map((p, i) => (
+                  <Path key={i} color={p.color} path={`M ${p.x} ${p.y - p.r} Q ${p.x + 1} ${p.y - 1} ${p.x + p.r} ${p.y} Q ${p.x + 1} ${p.y + 1} ${p.x} ${p.y + p.r} Q ${p.x - 1} ${p.y + 1} ${p.x - p.r} ${p.y} Q ${p.x - 1} ${p.y - 1} ${p.x} ${p.y - p.r} Z`} />
+                ))}
+
+              <Rect x={0} y={A.panelY} width={IW} height={IH - A.panelY}>
+                <LinearGradient start={vec(0, A.panelY)} end={vec(0, IH)} colors={[`${c.panel}c8`, `${c.panel}f4`]} />
+              </Rect>
+              <Rect x={0} y={A.panelY} width={IW} height={1} color={t.color} opacity={0.4} />
+              <Rect x={13} y={362} width={IW - 26} height={1} color="#ffffff" opacity={0.15} />
             </Group>
-            {f.holo > 0 && (
-              <Rect x={art.x} y={art.y} width={art.w} height={art.h} opacity={f.holo} blendMode="colorDodge">
-                <SweepGradient c={vec(art.x + art.w * tilt, art.y + art.h * 0.4)} colors={HOLO} origin={vec(art.x + art.w * tilt, art.y + art.h * 0.4)} transform={[{ rotate: angle }]} />
-              </Rect>
-            )}
-            {f.full && (
-              <Rect x={art.x} y={art.y} width={art.w} height={art.h}>
-                <LinearGradient start={vec(0, art.y)} end={vec(0, art.y + art.h)} colors={["rgba(13,11,20,0.55)", "rgba(13,11,20,0)", "rgba(13,11,20,0)", "rgba(13,11,20,0.82)", "rgba(13,11,20,0.92)"]} positions={[0, 0.22, 0.52, 0.78, 1]} />
-              </Rect>
-            )}
-          </Group>
-          <Rect x={9} y={367} width={268} height={1} color={f.full ? "rgba(242,239,250,0.22)" : "#D9D4E6"} />
-          <Group clip={PAPER}>
-            {f.cardHolo > 0 && (
-              <Rect x={9} y={9} width={268} height={390} opacity={f.cardHolo} blendMode="colorDodge">
-                <SweepGradient c={vec(W * tilt, H * 0.4)} colors={HOLO} />
-              </Rect>
-            )}
-            {f.holo > 0 && (
-              <Rect x={9} y={9} width={268} height={390} blendMode="overlay">
-                <LinearGradient start={vec(0, 0)} end={vec(W, H * 0.5)} colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.6)", "rgba(255,255,255,0)"]} positions={[tilt * 0.6, tilt * 0.6 + 0.08, tilt * 0.6 + 0.18]} />
-              </Rect>
-            )}
-            {f.sparkle &&
-              stars.map((p, i) => (
-                <Path key={i} color={["#FFFFFF", "#FFE98A", "#FFD84D"][i % 3]} path={Skia.Path.MakeFromSVGString(`M ${p.x} ${p.y - p.r} Q ${p.x + 1} ${p.y - 1} ${p.x + p.r} ${p.y} Q ${p.x + 1} ${p.y + 1} ${p.x} ${p.y + p.r} Q ${p.x - 1} ${p.y + 1} ${p.x - p.r} ${p.y} Q ${p.x - 1} ${p.y - 1} ${p.x} ${p.y - p.r} Z`)!} />
-              ))}
+            {gold && <RoundedRect x={0.75} y={0.75} width={IW - 1.5} height={IH - 1.5} r={10.5} style="stroke" strokeWidth={1.5} color="#FFD84DBB" />}
           </Group>
         </Group>
       </Canvas>
 
-      <View style={{ position: "absolute", left: 21 * k, right: 21 * k, top: 17 * k, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={text(26, font.heavy, head)}>{look.symbol}</Text>
-        <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 * k, borderRadius: 99 }, f.filledBadge && { backgroundColor: t.color, paddingHorizontal: 8 * k, paddingVertical: 3 * k }]}>
-          <Gem fill={f.filledBadge ? "#0D0B14" : t.color} size={14 * k} />
-          <Text style={text(11, font.monoBold, f.filledBadge || !f.full ? "#0D0B14" : ink)}>{t.label.toUpperCase()}</Text>
+      <View style={[row(11), { alignItems: "flex-start" }]}>
+        <View>
+          <Text style={[text(28, font.heavy, ink), { lineHeight: 30 * k, letterSpacing: -0.5 * k }]}>{look.symbol}</Text>
+          <Text style={[text(9, font.mono, c.caption), { letterSpacing: 4.5 * k }]}>{look.company.toUpperCase()}</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 * k, borderRadius: 99, borderWidth: 1, borderColor: dust ? "#5A546E" : t.color, backgroundColor: dust ? "#0D0B14AA" : t.color, paddingHorizontal: 9 * k, paddingVertical: 3 * k }}>
+          <Gem fill={dust ? t.color : "#0D0B14"} size={11 * k} />
+          <Text style={text(10.5, font.monoBold, dust ? "#B4AEC6" : "#0D0B14")}>{t.label.toUpperCase()}</Text>
         </View>
       </View>
-      <View style={{ position: "absolute", left: 21 * k, right: 21 * k, top: (f.full ? 282 : 264) * k, flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
-        <Text style={[text(54, font.heavy, head), { lineHeight: 60 * k, letterSpacing: -2 * k }]}>{mult}</Text>
-        <Text style={text(18, font.bold)}>{usd}</Text>
+      <View style={[row(285), { alignItems: "baseline" }]}>
+        <Text style={[text(50, font.heavy, dust ? "#C9C2D8" : ink), { lineHeight: 56 * k, letterSpacing: -2 * k }]}>{mult}</Text>
+        <Text style={text(20, font.bold)}>{usd}</Text>
       </View>
-      <View style={{ position: "absolute", left: 21 * k, right: 21 * k, top: (f.full ? 346 : 330) * k, flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={text(11, font.mono)}>{shares}</Text>
-        <Text style={text(11, font.mono)}>{now}</Text>
+      <View style={row(341)}>
+        <Text style={text(10.5, font.mono, "#E4DFF2")}>{shares}</Text>
+        <Text style={text(10.5, font.mono, now?.includes("\u25bc") ? "#FF8A7A" : dust ? "#C9C2D8" : "#9DF3FF")}>{now}</Text>
       </View>
-      <View style={{ position: "absolute", left: 21 * k, right: 21 * k, top: 375 * k, flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={text(10, font.mono, muted)}>Series 01 · {look.company}</Text>
-        <Text style={text(10, font.mono, muted)}>№ {serial}</Text>
+      <View style={row(369)}>
+        <Text style={text(8.5, font.mono, "#A9A3BC")}>SERIES 01 · {look.company.toUpperCase()}</Text>
+        <Text style={text(8.5, font.mono, "#A9A3BC")}>№ {serial}</Text>
       </View>
     </View>
   );

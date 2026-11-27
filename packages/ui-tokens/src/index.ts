@@ -179,43 +179,112 @@ export const SPLASH: Partial<Record<TierKey, Splash>> = {
 };
 export const SPLASH_MS = 3200;
 
-// ---- holo card + pack finishes (design canvas "B · Holo cards"); used by web and mobile -------------
+// ---- foil card + pack finishes; used by web and mobile ----------------------------------------------
 
 export type CardFinish = {
-  /** solid frame colour (first stop where the web draws a gradient) */
+  /** solid frame colour (card back, tease ring) */
   frame: string;
-  /** holo opacity inside the art window / over the whole card (0 = matte) */
+  /** stops of the face-up frame gradient (top-left to bottom-right; Mythic is a rainbow) */
+  edge: string[];
+  /** foil strength over the card, 0 = matte */
   holo: number;
-  cardHolo: number;
-  /** full-bleed art behind the text (Mythic, Grail) */
-  full: boolean;
-  filledBadge: boolean;
+  /** light thrown around the card */
+  glow: boolean;
+  /** colour left in the art: Dust is grey, so it never looks like a win */
+  saturation: number;
+  rays: boolean;
   sparkle: boolean;
 };
 
+const finish = (frame: string, edge: string[], holo: number, o: Partial<CardFinish> = {}): CardFinish => ({ frame, edge, holo, glow: holo > 0, saturation: 1, rays: false, sparkle: false, ...o });
 export const FINISH: Record<TierKey, CardFinish> = {
-  dust: { frame: "#24202F", holo: 0, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
-  common: { frame: "#3A3550", holo: 0, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
-  uncommon: { frame: "#3E8F55", holo: 0.2, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
-  rare: { frame: "#4FC3F7", holo: 0.7, cardHolo: 0, full: false, filledBadge: false, sparkle: false },
-  epic: { frame: "#7B4DFF", holo: 0.85, cardHolo: 0.18, full: false, filledBadge: true, sparkle: false },
-  legend: { frame: "#FF9F43", holo: 0.9, cardHolo: 0.32, full: false, filledBadge: true, sparkle: false },
-  mythic: { frame: "#FF6EC7", holo: 0.95, cardHolo: 0.22, full: true, filledBadge: true, sparkle: false },
-  grail: { frame: "#FFD84D", holo: 1, cardHolo: 0.25, full: true, filledBadge: true, sparkle: true },
+  dust: finish("#24202F", ["#24202F", "#24202F"], 0, { saturation: 0 }),
+  common: finish("#3A3550", ["#6B6486", "#3A3550", "#5A5475"], 0, { saturation: 0.75 }),
+  uncommon: finish("#3E8F55", ["#BDF5C8", "#7BD88F", "#3E8F55", "#9BE8AC"], 0.3),
+  rare: finish("#4FC3F7", ["#BDEBFF", "#4FC3F7", "#1A6F9C", "#8FDBFF"], 0.5),
+  epic: finish("#7B4DFF", ["#DCCBFF", "#B18CFF", "#5A2FD6", "#C4A6FF"], 0.6),
+  legend: finish("#FF9F43", ["#FFE0BD", "#FF9F43", "#B85C0B", "#FFC283"], 0.7),
+  mythic: finish("#FF6EC7", ["#FF6EC7", "#FFB86B", "#FEFF9C", "#7AFCFF", "#B28DFF", "#FF6EC7"], 0.8),
+  grail: finish("#FFD84D", ["#FFF3B0", "#FFD84D", "#B8860B", "#FFE98A", "#C99A1A"], 0.85, { rays: true, sparkle: true }),
+};
+
+/** Face-up card geometry on the 286×408 design; art positions are relative to the inner (framed) area. */
+export const CARD_ART = {
+  w: 286,
+  h: 408,
+  inset: 8,
+  /** centre of the hero logo, rings and rays */
+  cx: 135,
+  cy: 165,
+  /** top of the payout panel */
+  panelY: 280,
+  mark: { x: -46, size: 360 },
+  /** diagonal light on the foil: [position, "brand" | "white", alpha 00..ff] */
+  streaks: [
+    [0.08, "brand", "00"], [0.17, "brand", "55"], [0.23, "brand", "00"], [0.38, "brand", "00"], [0.44, "brand", "33"],
+    [0.45, "white", "22"], [0.52, "brand", "00"], [0.7, "brand", "00"], [0.82, "brand", "44"], [0.9, "brand", "00"],
+  ] as [number, "brand" | "white", string][],
+  /** rainbow foil bands: [position, colour with alpha] */
+  holo: [[0.05, "#7AFCFF00"], [0.28, "#B28DFF"], [0.46, "#FF6EC700"], [0.62, "#FEFF9C00"], [0.8, "#7AFCFF"], [0.95, "#FF6EC700"]] as [number, string][],
+} as const;
+
+/** Grail sparkles, below the header. */
+export const SPARKLES = Array.from({ length: 9 }, (_, i) => ({ x: ((i * 71 + 19) % 244) + 14, y: 70 + ((i * 113 + 44) % 205), r: 3.5 + (i % 3) * 2.5, color: ["#FFFFFF", "#FFE98A", "#FFD84D"][i % 3] }));
+
+export type CardTheme = {
+  /** brand mark on a 24×24 grid (Simple Icons). Company trademarks: see docs/DECISIONS.md. */
+  logo: string;
+  /** hero logo box on the card */
+  size: number;
+  /** the faint logo behind: its top and strength (blocky marks sit higher so their edges hide under the header) */
+  mark: { y: number; alpha: number };
+  /** glossy face of the logo, along `line` (x1, y1, x2, y2 in 0..1) */
+  face: [string, string, string, string];
+  line: [number, number, number, number];
+  /** the two depths under the face, and its bright rim */
+  extrude: [string, string];
+  rim: string;
+  /** background, centre outwards */
+  bg: [string, string, string, string];
+  /** rings and the small company name */
+  soft: string;
+  caption: string;
+  panel: string;
 };
 
 export type StockLook = {
   symbol: string;
   company: string;
-  art: string;
-  /** colour of the header printed on the pack's top seal, and of the light the pack throws (art/*.png) */
+  card: CardTheme;
+  /** colour of the header printed on the pack's top seal, and of the light the pack and card throw */
   foilInk: string;
   glow: string;
 };
 export const STOCK_LOOK: Record<"TSLA" | "NVDA" | "SOL", StockLook> = {
-  TSLA: { symbol: "TSLA", company: "Tesla", art: "#FF5B2E", foilInk: "#170507", glow: "#FF2D3A" },
-  NVDA: { symbol: "NVDA", company: "Nvidia", art: "#1FAF6A", foilInk: "#DCFF8F", glow: "#86E81C" },
-  SOL: { symbol: "SOL", company: "Solana", art: "#5B3FA8", foilInk: "#E9F2FF", glow: "#8B5CFF" },
+  TSLA: {
+    symbol: "TSLA", company: "Tesla", foilInk: "#170507", glow: "#FF2D3A",
+    card: {
+      logo: "M12 5.362l2.475-3.026s4.245.09 8.471 2.054c-1.082 1.636-3.231 2.438-3.231 2.438-.146-1.439-1.154-1.79-4.354-1.79L12 24 8.619 5.034c-3.18 0-4.188.354-4.335 1.792 0 0-2.146-.795-3.229-2.43C5.28 2.431 9.525 2.34 9.525 2.34L12 5.362l-.004.002H12v-.002zm0-3.899c3.415-.03 7.326.528 11.328 2.28.535-.968.672-1.395.672-1.395C19.625.612 15.528.015 12 0 8.472.015 4.375.61 0 2.349c0 0 .195.525.672 1.396C4.674 1.989 8.585 1.435 12 1.46v.003z", size: 128, mark: { y: 20, alpha: 0.11 },
+      face: ["#FF8A8F", "#FF2D3A", "#C50F1C", "#6E040C"], line: [0, 0, 0.35, 1], extrude: ["#2A0105", "#5A030A"], rim: "#FFD0D3",
+      bg: ["#A3111C", "#590811", "#1C0410", "#0B0209"], soft: "#FF8A8F", caption: "#FFC3C7", panel: "#0C0610",
+    },
+  },
+  NVDA: {
+    symbol: "NVDA", company: "Nvidia", foilInk: "#DCFF8F", glow: "#86E81C",
+    card: {
+      logo: "M8.948 8.798v-1.43a6.7 6.7 0 0 1 .424-.018c3.922-.124 6.493 3.374 6.493 3.374s-2.774 3.851-5.75 3.851c-.398 0-.787-.062-1.158-.185v-4.346c1.528.185 1.837.857 2.747 2.385l2.04-1.714s-1.492-1.952-4-1.952a6.016 6.016 0 0 0-.796.035m0-4.735v2.138l.424-.027c5.45-.185 9.01 4.47 9.01 4.47s-4.08 4.964-8.33 4.964c-.37 0-.733-.035-1.095-.097v1.325c.3.035.61.062.91.062 3.957 0 6.82-2.023 9.593-4.408.459.371 2.34 1.263 2.73 1.652-2.633 2.208-8.772 3.984-12.253 3.984-.335 0-.653-.018-.971-.053v1.864H24V4.063zm0 10.326v1.131c-3.657-.654-4.673-4.46-4.673-4.46s1.758-1.944 4.673-2.262v1.237H8.94c-1.528-.186-2.73 1.245-2.73 1.245s.68 2.412 2.739 3.11M2.456 10.9s2.164-3.197 6.5-3.533V6.201C4.153 6.59 0 10.653 0 10.653s2.35 6.802 8.948 7.42v-1.237c-4.84-.6-6.492-5.936-6.492-5.936z", size: 150, mark: { y: -62, alpha: 0.07 },
+      face: ["#E6FF9E", "#A8EC2A", "#5FA000", "#274A00"], line: [0, 0, 0.35, 1], extrude: ["#0B1A00", "#1F3B00"], rim: "#F1FFD0",
+      bg: ["#3A7A14", "#17400A", "#081A07", "#030B04"], soft: "#C6FF73", caption: "#D8FFA8", panel: "#050C06",
+    },
+  },
+  SOL: {
+    symbol: "SOL", company: "Solana", foilInk: "#E9F2FF", glow: "#8B5CFF",
+    card: {
+      logo: "m23.8764 18.0313-3.962 4.1393a.9201.9201 0 0 1-.306.2106.9407.9407 0 0 1-.367.0742H.4599a.4689.4689 0 0 1-.2522-.0733.4513.4513 0 0 1-.1696-.1962.4375.4375 0 0 1-.0314-.2545.4438.4438 0 0 1 .117-.2298l3.9649-4.1393a.92.92 0 0 1 .3052-.2102.9407.9407 0 0 1 .3658-.0746H23.54a.4692.4692 0 0 1 .2523.0734.4531.4531 0 0 1 .1697.196.438.438 0 0 1 .0313.2547.4442.4442 0 0 1-.1169.2297zm-3.962-8.3355a.9202.9202 0 0 0-.306-.2106.941.941 0 0 0-.367-.0742H.4599a.4687.4687 0 0 0-.2522.0734.4513.4513 0 0 0-.1696.1961.4376.4376 0 0 0-.0314.2546.444.444 0 0 0 .117.2297l3.9649 4.1394a.9204.9204 0 0 0 .3052.2102c.1154.049.24.0744.3658.0746H23.54a.469.469 0 0 0 .2523-.0734.453.453 0 0 0 .1697-.1961.4382.4382 0 0 0 .0313-.2546.4444.4444 0 0 0-.1169-.2297zM.46 6.7225h18.7815a.9411.9411 0 0 0 .367-.0742.9202.9202 0 0 0 .306-.2106l3.962-4.1394a.4442.4442 0 0 0 .117-.2297.4378.4378 0 0 0-.0314-.2546.453.453 0 0 0-.1697-.196.469.469 0 0 0-.2523-.0734H4.7596a.941.941 0 0 0-.3658.0745.9203.9203 0 0 0-.3052.2102L.1246 5.9687a.4438.4438 0 0 0-.1169.2295.4375.4375 0 0 0 .0312.2544.4512.4512 0 0 0 .1692.196.4689.4689 0 0 0 .2518.0739z", size: 128, mark: { y: -62, alpha: 0.07 },
+      face: ["#9945FF", "#7F6BF0", "#43B4CA", "#14F195"], line: [0, 1, 1, 0], extrude: ["#12042E", "#2D0F63"], rim: "#E9F2FF",
+      bg: ["#4A1F9E", "#27105C", "#10082A", "#070416"], soft: "#B79CFF", caption: "#D6C8FF", panel: "#0A0616",
+    },
+  },
 };
 
 // ---- what screens say about money, odds and cards (shared so web and mobile never disagree) ----------
