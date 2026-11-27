@@ -9,8 +9,7 @@
     "keeper": {
       "root": ".",
       "runtime": "container",
-      "entrypoint": "Dockerfile.keeper",
-      "command": ["node", "--import", "tsx", "src/index.ts", "--web"]
+      "entrypoint": "Dockerfile.keeper-web"
     }
   },
   "daemons": {

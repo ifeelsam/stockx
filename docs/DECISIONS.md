@@ -119,3 +119,4 @@
 - Project env: `NEXT_PUBLIC_PRIVY_APP_ID`, `NEXT_PUBLIC_BACKEND=chain`, `KEEPER_KEYPAIR_JSON`, `FAUCET_AUTHORITY_KEYPAIR_JSON`, `PYTH_PRO_TOKEN`, `PRICE_SOURCE=pythpro`, `KEEPER_HOLD_FEEDS=mTSLA,mNVDA`, `REFILL_STOCK=1`. Leave `PORT` and `NEXT_PUBLIC_KEEPER_URL` unset. Mobile builds use `EXPO_PUBLIC_KEEPER_URL=https://<domain>/keeper`.
 - Limits: faucet throttles are in memory, so on Vercel they are per instance and reset on scale-down (the 1 SOL floor still applies). Env vars are project-wide, so the web service also receives the keeper keys. Run one keeper only: stop local and Fly keepers.
 - Hobby daemons get 420 GB-hours a month, about 17 days of one 1 GiB instance.
+- Found on the first deploy: the service `command` override was not applied (the web service ran the loops). The HTTP side now has its own `Dockerfile.keeper-web` with `--web` and `PORT=80` baked in. `PYTH_PRO_TOKEN` was also missing, which stopped both processes; only the daemon needs it now.

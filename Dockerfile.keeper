@@ -1,6 +1,8 @@
 # Keeper image, used by Vercel (vercel.json) and Fly (services/keeper/fly.toml). The build context is the repo root:
 #   docker build -f Dockerfile.keeper -t scratchers-keeper .
 FROM node:22-slim
+# slim has no CA store; Vercel's daemon runtime looks for one
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
 # Whole workspace: a frozen lockfile needs every importer's package.json present.

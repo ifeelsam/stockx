@@ -1,0 +1,19 @@
+# The keeper's HTTP side (faucet, health): the "keeper" service in vercel.json. Same image as Dockerfile.keeper
+# except the last lines; keep the two in step. A separate file because Vercel ignored the service's `command`.
+#   docker build -f Dockerfile.keeper-web -t scratchers-keeper-web .
+FROM node:22-slim
+# slim has no CA store; Vercel's daemon runtime looks for one
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
+WORKDIR /repo
+# Whole workspace: a frozen lockfile needs every importer's package.json present.
+COPY . .
+RUN pnpm install --frozen-lockfile --filter @scratchers/keeper...
+RUN pnpm --filter @scratchers/sdk build
+ENV DEPLOYMENTS=/repo/deployments/devnet.json
+ENV PORT=80
+EXPOSE 80
+WORKDIR /repo/services/keeper
+# Secrets via env (never baked in): KEEPER_KEYPAIR_JSON, FAUCET_AUTHORITY_KEYPAIR_JSON, PYTH_PRO_TOKEN
+# node directly: no package manager download at start-up, and signals reach the process.
+CMD ["node", "--import", "tsx", "src/index.ts", "--web"]
